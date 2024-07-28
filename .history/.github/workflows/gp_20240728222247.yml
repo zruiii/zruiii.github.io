@@ -39,7 +39,7 @@ jobs:
           && tar -xvf ${{ runner.temp }}/hugo.tar.gz -C ${{ runner.temp }} \
           && rm ${{ runner.temp }}/hugo.tar.gz
           ls -la ${{ runner.temp }}
-          sudo cp -r ${{ runner.temp }}/hugo /usr/local/bin/hugo
+          sudo cp ${{ runner.temp }}/hugo /usr/local/bin/hugo
       - name: Checkout
         uses: actions/checkout@v2
         with:

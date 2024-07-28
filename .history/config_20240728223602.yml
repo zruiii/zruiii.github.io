@@ -77,9 +77,9 @@ languages:
   zh:
     languageName: 中
     author: Ladder 主题
+    authorDescription: 一个美观，快速并且专注于阅读的主题
+    info: 帮助开发者构建一个免费并且漂亮的博客网站，记录自己的思考并且提高自己的影响力
     params:
-      authorDescription: 一个美观，快速并且专注于阅读的主题
-      info: 帮助开发者构建一个免费并且漂亮的博客网站，记录自己的思考并且提高自己的影响力
       guestbook:
         title: "留言板"
         description: "您的评论，会让该网站更精彩！"

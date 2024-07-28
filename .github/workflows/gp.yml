@@ -3,8 +3,9 @@ name: Deploy Hugo site to Pages
 
 on:
   # Runs on pushes targeting the default branch
-#  push:
-#    branches: ["master"]
+  push:
+    branches:
+      - main
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,13 +31,12 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      HUGO_VERSION: 0.115.0
+      HUGO_VERSION: 0.99.0
     steps:
       - name: Install Hugo CLI
         run: |
-          wget -O hugo.tar.gz https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_Linux-64bit.tar.gz
-          tar -xzf hugo.tar.gz -C /usr/local/bin
-          hugo version
+          wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_Linux-64bit.deb \
+          && sudo dpkg -i ${{ runner.temp }}/hugo.deb
       - name: Checkout
         uses: actions/checkout@v2
         with:

@@ -33,16 +33,6 @@
   </url><url>
     <loc>http://localhost:1313/en/tags/tag1/</loc>
     <lastmod>2024-07-24T23:55:52+08:00</lastmod>
-    <xhtml:link
-                rel="alternate"
-                hreflang="zh"
-                href="http://localhost:1313/tags/tag1/"
-                />
-    <xhtml:link
-                rel="alternate"
-                hreflang="en"
-                href="http://localhost:1313/en/tags/tag1/"
-                />
   </url><url>
     <loc>http://localhost:1313/en/tags/</loc>
     <lastmod>2024-07-24T23:55:52+08:00</lastmod>

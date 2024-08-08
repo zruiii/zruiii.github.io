@@ -4,18 +4,16 @@
     <title>Ray’Log</title>
     <link>http://localhost:1313/</link>
     <description>Recent content on Ray’Log</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo</generator>
     <language>zh</language>
-    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 08 Aug 2024 16:48:01 +0800</lastBuildDate>
+    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>一个测试博客</title>
-      <link>http://localhost:1313/blog/my-first-blog/</link>
-      <pubDate>Wed, 24 Jul 2024 23:55:52 +0800</pubDate>
-      
-      <guid>http://localhost:1313/blog/my-first-blog/</guid>
-      <description>&lt;p&gt;Here is summary.&lt;/p&gt;
-&lt;p&gt;here is your content.&lt;/p&gt;</description>
+      <title>如何让大语言模型听到声音</title>
+      <link>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</link>
+      <pubDate>Thu, 08 Aug 2024 16:48:01 +0800</pubDate>
+      <guid>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</guid>
+      <description>如何让大语言模型听到声音 了解音频数据 频率 &amp;amp; 振幅 &amp;amp; 位深&#xA;声音的本质是连续信号，采样是捕获这种连续值的方法。&#xA;一般来讲，采样率是指一秒钟内进行采样的频率，以赫兹 (Hz) 为单位。&#xA;根据奈奎斯特极限，从信号中能够捕获的最高频率正好是采样率的一半。而人类语言的可听频率低于 8 kHz，更高频的声音信号人耳是听不到的。因此，16 kHz 的采样率对于处理音频而言足矣。但是如果采样率低于 8 kHz，就会丢失一些信息，导致声音变得沉闷。&#xA;如果训练样本中的音频频率不一致，则需要引入重采样的预处理步骤来确保采样频率的一致性。&#xA;声音是由人类可听频率内的气压变化产生的，声压的级别用振幅表示，例如低于 60 分贝(dB) 人耳就很难感知到。&#xA;位深是用来刻画振幅值的度量精度。常见的位深有16-bit 和 24-bit，这些都是整数样本，浮点数样本是32-bit。&#xA;波形 &amp;amp; 频谱 &amp;amp; 光谱&#xA;波形图是基于采样点上振幅值所表示的曲线图，它的横轴是时间，纵轴是振幅值。&#xA;频谱是振幅数据经过离散傅立叶变换得到的，它的横轴是频率，纵轴是振幅值。&#xA;波形图和频谱图刻画的是振幅在时间/频率维度的变化，光谱图则表示频率在时间维度上的变化。它是对时间进行微分，在每个时间窗口内进行傅立叶变化，得到该时刻的频谱，最后将所有时刻的频谱拼接起来，振幅值大小用颜色深浅表示。&#xA;一些深度学习模型对光谱图进行重构，而不是波形图。&#xA;人类的听觉系统对较低频率的变化比对较高频率的变化更敏感，并且这种灵敏度随着频率的增加而呈对数下降。&#xA;梅尔谱图考虑到这一特性，对频率进行梅尔滤波。在 Whisper 中的输入就是梅尔谱图，每个样本的大小是 [频率维度，时间帧数]，如果采用80个Mel滤波器，并将音频信号划分为3000帧，那么梅尔谱图的特征大小就是 [80, 3000]。&#xA;梅尔光谱图可以捕捉到对人类感知而言更有意义的信号，因此在语音识别、音色分类等任务中应用较广。但是相比于标准光谱图，梅尔光谱图由于引入滤波操作，会导致信号的过滤，使得从梅尔光谱图转换回波形图变得比较棘手，需要引入 HiFiGAN 这种模型来解决。&#xA;音频信号的预处理流程 第一步：重采样&#xA;大多数深度学习模型都是基于 16 kHz 采样的音频信号进行训练的，为了和这些预训练模型保持一致，我们首先需要对自己的数据集进行重采样（如果原始数据采样频率不是16 kHz）&#xA;from datasets import Audio minds = minds.cast_column(&amp;#34;audio&amp;#34;, Audio(sampling_rate=16_000)) 下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz之后多了更多的样本点。&#xA;第二步：过滤时长较长的数据&#xA;为了防止推理或者训练的时候内存不足，可以限制数据的时长，将时长超过一定阈值的样本从原始数据中删掉。&#xA;第三步：特征提取&#xA;原始音频数据只有振幅波形，还需要从中抽取更丰富的特征用于模型训练，这里以 Whisper 为例，其特征提取包含两个部分：</description>
     </item>
-    
   </channel>
 </rss>

@@ -4,18 +4,16 @@
     <title>Tag1 on Ray’Log</title>
     <link>http://localhost:1313/tags/tag1/</link>
     <description>Recent content in Tag1 on Ray’Log</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo</generator>
     <language>zh</language>
-    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/tags/tag1/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate>
+    <atom:link href="http://localhost:1313/tags/tag1/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>一个测试博客</title>
+      <title>如何让大语言模型听到声音</title>
       <link>http://localhost:1313/blog/my-first-blog/</link>
       <pubDate>Wed, 24 Jul 2024 23:55:52 +0800</pubDate>
-      
       <guid>http://localhost:1313/blog/my-first-blog/</guid>
-      <description>&lt;p&gt;Here is summary.&lt;/p&gt;
-&lt;p&gt;here is your content.&lt;/p&gt;</description>
+      <description>&lt;p&gt;Here is summary.&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>

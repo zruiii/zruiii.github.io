@@ -52,11 +52,11 @@
 &lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;minds &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; minds&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;cast_column(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;audio&amp;#34;&lt;/span&gt;, Audio(sampling_rate&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;16_000&lt;/span&gt;))
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz 之后多了更多的样本点。&lt;/p&gt;
 &lt;div class=&#34;image-container&#34;&gt;
-&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195059588.png&#34; alt=&#34;image-20240805195059588&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195059588.png&#34; alt=&#34;image-20240805195059588&#34; style=&#34;zoom:40%;&#34; /&gt;
 &lt;div class=&#34;image-caption&#34;&gt;8 kHz 采样片段&lt;/div&gt;
 &lt;/div&gt;
 &lt;div class=&#34;image-container&#34;&gt;
-&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195114381.png&#34; alt=&#34;image-20240805195114381&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195114381.png&#34; alt=&#34;image-20240805195114381&#34; style=&#34;zoom:40%;&#34; /&gt;
 &lt;div class=&#34;image-caption&#34;&gt;16 kHz 采样片段&lt;/div&gt;
 &lt;/div&gt;
 &lt;p&gt;&lt;strong&gt;第二步：过滤时长较长的数据&lt;/strong&gt;&lt;/p&gt;
@@ -90,7 +90,7 @@
 &lt;p&gt;具体而言，Wav2Vec2.0 首先用卷积层将初始的音频信号离散化，得到初始的音频表征 $\mathcal{Z}$，注意这里采用的是有 overlap 的滑移窗口。表征 $\mathcal{Z}$ 随后有两个去处：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;输入 Transformer 编码器得到语义表征 $\mathcal{C}$。&lt;/li&gt;
-&lt;li&gt;经过量化得到量化表征 $\mathcal{Q}$。这里的量化表征可以看作对连续的 $d$ 维表征空间进行离散化，它首先预设有 $G$ 个 $d/G$ 维的子空间，每个子空间里有 $V$ 个条目 (entries)，音频表征 $z \in \mathbb{R}^{d}$ 可以转换为 $G$ 个子空间中原型向量 $e \in \mathbb{R}^{V \times d/G}$ 的组合。基于这一思想，我们可以对初始表征 $z$ 进行映射变换得到索引矩阵 $\mathcal{I} \in \mathbb{R}^{G \times V}$，随后将 $G$ 个子空间中索引概率最大的那一个条目 $i = \text{argmax}_{j} p_{g,j}$ 拿出来，拼接并进行线性变换，得到量化表征 $q \in \mathbb{R}^{f}$。&lt;/li&gt;
+&lt;li&gt;经过量化得到量化表征 $\mathcal{Q}$。这里的量化表征可以看作对连续的 $d$ 维表征空间进行离散化，它首先预设有 $G$ 个 $d/G$ 维的子空间，每个子空间里有 $V$ 个条目 (entries)，音频表征 $z \in \mathbb{R}^{d}$ 可以转换为 $G$ 个子空间中原型向量 $e \in \mathbb{R}^{V \times d/G}$ 的组合。基于这一思想，我们可以对初始表征 $z$ 进行映射变换得到索引矩阵 $\mathcal{I} \in \mathbb{R}^{G \times V}$，随后将 $G$ 个子空间中索引概率最大的那一个条目 $i = \text{argmax}_{j} p_{g,j}$ 拿出来拼接并进行线性变换，得到量化表征 $q \in \mathbb{R}^{f}$。&lt;/li&gt;
 &lt;/ul&gt;
 &lt;blockquote&gt;
 &lt;p&gt;这里对比学习不是作用于 $\mathcal{Z}$ 和 $\mathcal{C}$ ，而是引入 product quantization 操作得到量化表征 $\mathcal{Q}$。可以将量化表征看作是 nn.Embedding，它是有限向量的集合，因为量化表征是 G 个子空间有限条目的线性变换而来，因此它也是离散的。&lt;/p&gt;
@@ -99,7 +99,7 @@
 &lt;p&gt;&lt;strong&gt;Seq2Seq 架构&lt;/strong&gt;&lt;/p&gt;
 &lt;p&gt;在 CTC 架构中，输入和输出都是相同的长度，因此在进行 ASR 等任务时需要引入 CTC 来实现文本对齐。但是在 Seq2Seq 架构中，因为模型采用生成式理念，因此输入和输出的长度可以不一致。比如下面 Whisper 架构：&lt;/p&gt;
 &lt;div class=&#34;image-container&#34;&gt;
-&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/whisper_architecture.svg&#34; alt=&#34;Whisper is a transformer encoder-decoder model&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/whisper_architecture.svg&#34; alt=&#34;Whisper is a transformer encoder-decoder model&#34; style=&#34;zoom:60%;&#34; /&gt;
 &lt;div class=&#34;image-caption&#34;&gt;Whisper&lt;/div&gt;
 &lt;/div&gt;
 &lt;p&gt;在 Whisper 中，输入是音频信号转换的梅尔频谱图，输出是文本。&lt;/p&gt;</description>

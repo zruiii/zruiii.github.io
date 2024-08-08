@@ -1,4 +1,3 @@
-@charset "UTF-8";
 *,
 *:after,
 *:before {
@@ -198,10 +197,7 @@ table th {
   border-bottom: 1px solid #ced4da; }
 
 img {
-  max-width: 100%;
-  height: auto;
-  cursor: zoom-in;
-  /* 添加放大镜图标 */ }
+  max-width: 100%; }
 
 .image-container {
   text-align: center;
@@ -215,15 +211,6 @@ img {
   margin-top: 10px;
   font-size: 0.9em;
   color: #555; }
-
-/* Medium Zoom adjustments */
-.medium-zoom-overlay {
-  background-color: rgba(0, 0, 0, 0.5);
-  cursor: zoom-out; }
-
-.medium-zoom-image {
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
-  cursor: zoom-out; }
 
 [data-dark-mode] body .navigation .navigation-list .navigation-dark .toggle-light {
   display: block;

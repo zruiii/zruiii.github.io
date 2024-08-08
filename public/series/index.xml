@@ -4,8 +4,7 @@
     <title>Series on Ray’Log</title>
     <link>http://localhost:1313/series/</link>
     <description>Recent content in Series on Ray’Log</description>
-    <generator>Hugo</generator>
-    <language>zh</language>
-    <atom:link href="http://localhost:1313/series/index.xml" rel="self" type="application/rss+xml" />
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh</language><atom:link href="http://localhost:1313/series/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>

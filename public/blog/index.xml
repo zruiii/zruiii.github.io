@@ -4,16 +4,106 @@
     <title>Blogs on Ray’Log</title>
     <link>http://localhost:1313/blog/</link>
     <description>Recent content in Blogs on Ray’Log</description>
-    <generator>Hugo</generator>
+    <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
-    <lastBuildDate>Thu, 08 Aug 2024 16:48:01 +0800</lastBuildDate>
-    <atom:link href="http://localhost:1313/blog/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 08 Aug 2024 16:48:01 +0800</lastBuildDate><atom:link href="http://localhost:1313/blog/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>如何让大语言模型听到声音</title>
       <link>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</link>
       <pubDate>Thu, 08 Aug 2024 16:48:01 +0800</pubDate>
+      
       <guid>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</guid>
-      <description>如何让大语言模型听到声音 了解音频数据 频率 &amp;amp; 振幅 &amp;amp; 位深&#xA;声音的本质是连续信号，采样是捕获这种连续值的方法。&#xA;一般来讲，采样率是指一秒钟内进行采样的频率，以赫兹 (Hz) 为单位。&#xA;根据奈奎斯特极限，从信号中能够捕获的最高频率正好是采样率的一半。而人类语言的可听频率低于 8 kHz，更高频的声音信号人耳是听不到的。因此，16 kHz 的采样率对于处理音频而言足矣。但是如果采样率低于 8 kHz，就会丢失一些信息，导致声音变得沉闷。&#xA;如果训练样本中的音频频率不一致，则需要引入重采样的预处理步骤来确保采样频率的一致性。&#xA;声音是由人类可听频率内的气压变化产生的，声压的级别用振幅表示，例如低于 60 分贝(dB) 人耳就很难感知到。&#xA;位深是用来刻画振幅值的度量精度。常见的位深有16-bit 和 24-bit，这些都是整数样本，浮点数样本是32-bit。&#xA;波形 &amp;amp; 频谱 &amp;amp; 光谱&#xA;波形图是基于采样点上振幅值所表示的曲线图，它的横轴是时间，纵轴是振幅值。&#xA;频谱是振幅数据经过离散傅立叶变换得到的，它的横轴是频率，纵轴是振幅值。&#xA;波形图和频谱图刻画的是振幅在时间/频率维度的变化，光谱图则表示频率在时间维度上的变化。它是对时间进行微分，在每个时间窗口内进行傅立叶变化，得到该时刻的频谱，最后将所有时刻的频谱拼接起来，振幅值大小用颜色深浅表示。&#xA;一些深度学习模型对光谱图进行重构，而不是波形图。&#xA;人类的听觉系统对较低频率的变化比对较高频率的变化更敏感，并且这种灵敏度随着频率的增加而呈对数下降。&#xA;梅尔谱图考虑到这一特性，对频率进行梅尔滤波。在 Whisper 中的输入就是梅尔谱图，每个样本的大小是 [频率维度，时间帧数]，如果采用80个Mel滤波器，并将音频信号划分为3000帧，那么梅尔谱图的特征大小就是 [80, 3000]。&#xA;梅尔光谱图可以捕捉到对人类感知而言更有意义的信号，因此在语音识别、音色分类等任务中应用较广。但是相比于标准光谱图，梅尔光谱图由于引入滤波操作，会导致信号的过滤，使得从梅尔光谱图转换回波形图变得比较棘手，需要引入 HiFiGAN 这种模型来解决。&#xA;音频信号的预处理流程 第一步：重采样&#xA;大多数深度学习模型都是基于 16 kHz 采样的音频信号进行训练的，为了和这些预训练模型保持一致，我们首先需要对自己的数据集进行重采样（如果原始数据采样频率不是16 kHz）&#xA;from datasets import Audio minds = minds.cast_column(&amp;#34;audio&amp;#34;, Audio(sampling_rate=16_000)) 下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz之后多了更多的样本点。&#xA;第二步：过滤时长较长的数据&#xA;为了防止推理或者训练的时候内存不足，可以限制数据的时长，将时长超过一定阈值的样本从原始数据中删掉。&#xA;第三步：特征提取&#xA;原始音频数据只有振幅波形，还需要从中抽取更丰富的特征用于模型训练，这里以 Whisper 为例，其特征提取包含两个部分：</description>
+      <description>&lt;p&gt;本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。&lt;/p&gt;
+&lt;h3 id=&#34;了解音频数据&#34;&gt;了解音频数据&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;频率 &amp;amp; 振幅 &amp;amp; 位深&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;声音的本质是连续信号，采样是捕获这种连续值的方法。&lt;/p&gt;
+&lt;p&gt;采样率指一秒钟内进行采样的频率，以赫兹 (Hz) 为单位。根据奈奎斯特极限，从信号中能够捕获的最高频率正好是采样率的一半。人类语言的可听频率低于 8 kHz，更高频的声音信号人耳是听不到的。因此，16 kHz 的采样率对于处理音频而言足矣。但是如果采样率低于 8 kHz，就会丢失一些信息，导致声音变得沉闷。如果训练样本中的音频频率不一致，则需要引入&lt;strong&gt;重采样&lt;/strong&gt;的预处理步骤来确保采样频率的一致性。&lt;/p&gt;
+&lt;p&gt;声音是由人类可听频率内的气压变化产生的，声压的级别用振幅表示。例如，低于 60 分贝(dB) 人耳就很难感知到。位深是用来刻画振幅值的度量精度。常见的位深有 16-bit 和 24-bit，这些都是整数样本，浮点数样本是 32-bit。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;波形 &amp;amp; 频谱 &amp;amp; 光谱&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;波形图是基于采样点上振幅值所表示的曲线图，横轴是时间，纵轴是振幅值。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+    &lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805190849457.png&#34; alt=&#34;波形示例&#34; style=&#34;zoom:50%;&#34; /&gt;
+    &lt;div class=&#34;image-caption&#34;&gt;波形示例&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;频谱是振幅数据经过离散傅立叶变换得到的，横轴是频率，纵轴是振幅值。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+  &lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191047605.png&#34; alt=&#34;image-20240805191047605&#34; style=&#34;zoom:50%;&#34; /&gt;
+  &lt;div class=&#34;image-caption&#34;&gt;频率随时间的变化&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;波形图和频谱图刻画的是振幅在时间/频率维度的变化，光谱图则表示频率在时间维度上的变化。它对时间进行微分，在每个时间窗口内进行傅立叶变化，得到该时刻的频谱，最后将所有时刻的频谱拼接起来，振幅值大小用颜色深浅表示。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191528713.png&#34; alt=&#34;image-20240805191528713&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;频谱示例&lt;/div&gt;
+&lt;/div&gt;
+&lt;blockquote&gt;
+&lt;p&gt;一些深度学习模型对光谱图进行重构，而不是波形图。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;人类的听觉系统对较低频率的变化比对较高频率的变化更敏感，这种灵敏度随着频率的增加而呈对数下降。梅尔谱图考虑到这一特性，对频率进行梅尔滤波。在 Whisper 中的输入就是梅尔谱图，每个样本的大小是 [频率维度，时间帧数]。如果采用 80 个 Mel 滤波器，并将音频信号划分为 3000 帧，那么梅尔谱图的特征大小就是 [80, 3000]。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191814452.png&#34; alt=&#34;image-20240805191814452&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;梅尔谱图示例&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;梅尔光谱图可以捕捉到对人类感知而言更有意义的信号，因此在语音识别、音色分类等任务中应用较广。但相比于标准光谱图，梅尔光谱图由于引入滤波操作，会导致信号的过滤，使得从梅尔光谱图转换回波形图变得比较棘手，需要引入 HiFiGAN 这种模型来解决。&lt;/p&gt;
+&lt;h3 id=&#34;音频信号的预处理流程&#34;&gt;音频信号的预处理流程&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;第一步：重采样&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;大多数深度学习模型都是基于 16 kHz 采样的音频信号进行训练的，为了和这些预训练模型保持一致，我们首先需要对自己的数据集进行重采样（如果原始数据采样频率不是 16 kHz）。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; datasets &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Audio
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;minds &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; minds&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;cast_column(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;audio&amp;#34;&lt;/span&gt;, Audio(sampling_rate&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;16_000&lt;/span&gt;))
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz 之后多了更多的样本点。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195059588.png&#34; alt=&#34;image-20240805195059588&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;8 kHz 采样片段&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195114381.png&#34; alt=&#34;image-20240805195114381&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;16 kHz 采样片段&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;&lt;strong&gt;第二步：过滤时长较长的数据&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;为了防止推理或者训练的时候内存不足，可以限制数据的时长，将时长超过一定阈值的样本从原始数据中删掉。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;第三步：特征提取&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;原始音频数据只有振幅波形，还需要从中抽取更丰富的特征用于模型训练。以 Whisper 为例，其特征提取包含两个部分：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;填充/截断，控制每个样本长度都是 30 秒&lt;/li&gt;
+&lt;li&gt;将音频矩阵转换为对数梅尔光谱图作为输入特征&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;音频相关的任务&#34;&gt;音频相关的任务&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;音频分类：歌曲识别&lt;/li&gt;
+&lt;li&gt;自动语音识别 (ASR)：将讲者说话的内容自动转录成文字&lt;/li&gt;
+&lt;li&gt;声纹分割 (speaker diarization)：将播客音频中不同讲者的音频分离开来&lt;/li&gt;
+&lt;li&gt;Text to Speech：将文字转录为人声&lt;/li&gt;
+&lt;li&gt;Voice Conversation：输入和输出都是音频&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;用于处理音频信号的-transformer&#34;&gt;用于处理音频信号的 Transformer&lt;/h3&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/transformers_blocks.png&#34; alt=&#34;The transformer with audio input and output&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;语音作为输入和输出的Transformer结构&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;模型的输入可以是文本、波形、频谱。对于波形和频谱的输入，可以采用 CNN 来作为特征提取器得到初始表征。模型的输出一般是文本或者频谱，如果想得到波形则可以对频谱进行逆变换。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;CTC 架构&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;CTC 全称是 Connectionist Temporal Classification，直译过来就是联结主义时序分类，这是用于训练早期语音模型的损失函数。比如 Wav2Vec2.0 就采用该损失用于下游语音识别任务的微调。在 Wav2Vec2.0 中，模型采用 Temporal Convolution 作为特征抽取器，Transformer 作为编码器。&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240806111914404.png&#34; alt=&#34;image-20240806111914404&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;Wav2Vec 2.0&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;具体而言，Wav2Vec2.0 首先用卷积层将初始的音频信号离散化，得到初始的音频表征 $\mathcal{Z}$，注意这里采用的是有 overlap 的滑移窗口。表征 $\mathcal{Z}$ 随后有两个去处：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;输入 Transformer 编码器得到语义表征 $\mathcal{C}$。&lt;/li&gt;
+&lt;li&gt;经过量化得到量化表征 $\mathcal{Q}$。这里的量化表征可以看作对连续的 $d$ 维表征空间进行离散化，它首先预设有 $G$ 个 $d/G$ 维的子空间，每个子空间里有 $V$ 个条目 (entries)，音频表征 $z \in \mathbb{R}^{d}$ 可以转换为 $G$ 个子空间中原型向量 $e \in \mathbb{R}^{V \times d/G}$ 的组合。基于这一思想，我们可以对初始表征 $z$ 进行映射变换得到索引矩阵 $\mathcal{I} \in \mathbb{R}^{G \times V}$，随后将 $G$ 个子空间中索引概率最大的那一个条目 $i = \text{argmax}_{j} p_{g,j}$ 拿出来，拼接并进行线性变换，得到量化表征 $q \in \mathbb{R}^{f}$。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这里对比学习不是作用于 $\mathcal{Z}$ 和 $\mathcal{C}$ ，而是引入 product quantization 操作得到量化表征 $\mathcal{Q}$。可以将量化表征看作是 nn.Embedding，它是有限向量的集合，因为量化表征是 G 个子空间有限条目的线性变换而来，因此它也是离散的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;在预训练阶段，Wav2Vec2.0 采用语义表征 $\mathcal{C}$ 与量化表征 $\mathcal{Q}$ 之间的对比学习损失和量化表征 $\mathcal{Q}$ 的熵作为损失函数。在微调阶段，Wav2Vec2.0 采用 CTC 损失。假设这里的音频对应文本是 &amp;ldquo;hello&amp;rdquo;，经过卷积后得到 20 个 token，这显然和目标文本（5 个字母）不对齐，因此需要用 CTC 损失。在 CTC 中，我们考虑 20 个 token 预测值的排列组合，得到所有这 5 个字母按照 &amp;ldquo;h -&amp;gt; e -&amp;gt; l -&amp;gt; l -&amp;gt; o&amp;rdquo; 顺序构成的序列，计算它们的概率和。微调阶段就是希望这个概率最大，比如这个例子中预测值可能是 &amp;ldquo;hhheeeeelllllllllloo&amp;rdquo;，这时候再进行解码即可（连续字母去重）。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Seq2Seq 架构&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;在 CTC 架构中，输入和输出都是相同的长度，因此在进行 ASR 等任务时需要引入 CTC 来实现文本对齐。但是在 Seq2Seq 架构中，因为模型采用生成式理念，因此输入和输出的长度可以不一致。比如下面 Whisper 架构：&lt;/p&gt;
+&lt;div class=&#34;image-container&#34;&gt;
+&lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/whisper_architecture.svg&#34; alt=&#34;Whisper is a transformer encoder-decoder model&#34; style=&#34;zoom:50%;&#34; /&gt;
+&lt;div class=&#34;image-caption&#34;&gt;Whisper&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;在 Whisper 中，输入是音频信号转换的梅尔频谱图，输出是文本。&lt;/p&gt;</description>
     </item>
+    
   </channel>
 </rss>

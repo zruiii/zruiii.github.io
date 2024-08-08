@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>如何让大语言模型听到声音</title>
+    <meta charset="utf-8">
+    <meta name="description" content="Ladder@本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。">
+    <meta name="author" content="👋 Welcome to Ray’Log">
+    <link rel="canonical" href="http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/">
+        <meta name="google-site-verification" content="xxx">
+
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:1313//index.xml" title="Ray’Log">
+
+    
+  
+    
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-xxx"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-xxx');
+        }
+      </script>
+    
+  
+
+
+
+
+<script async defer data-website-id="xxx" src="https://xxx"></script>
+
+    <meta property="og:url" content="http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/">
+  <meta property="og:site_name" content="Ray’Log">
+  <meta property="og:title" content="如何让大语言模型听到声音">
+  <meta property="og:description" content="本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。">
+  <meta property="og:locale" content="zh">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="blog">
+    <meta property="article:published_time" content="2024-08-08T16:48:01+08:00">
+    <meta property="article:modified_time" content="2024-08-08T16:48:01+08:00">
+    <meta property="article:tag" content="LLM">
+
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="如何让大语言模型听到声音">
+  <meta name="twitter:description" content="本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Blogs",
+      "item": "http://localhost:1313/blog/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "如何让大语言模型听到声音",
+      "item": "http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "如何让大语言模型听到声音",
+  "name": "如何让大语言模型听到声音",
+  "description": "本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。\n",
+  "keywords": [
+    "LLM"
+  ],
+  "articleBody": "本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。\n了解音频数据 频率 \u0026 振幅 \u0026 位深\n声音的本质是连续信号，采样是捕获这种连续值的方法。\n采样率指一秒钟内进行采样的频率，以赫兹 (Hz) 为单位。根据奈奎斯特极限，从信号中能够捕获的最高频率正好是采样率的一半。人类语言的可听频率低于 8 kHz，更高频的声音信号人耳是听不到的。因此，16 kHz 的采样率对于处理音频而言足矣。但是如果采样率低于 8 kHz，就会丢失一些信息，导致声音变得沉闷。如果训练样本中的音频频率不一致，则需要引入重采样的预处理步骤来确保采样频率的一致性。\n声音是由人类可听频率内的气压变化产生的，声压的级别用振幅表示。例如，低于 60 分贝(dB) 人耳就很难感知到。位深是用来刻画振幅值的度量精度。常见的位深有 16-bit 和 24-bit，这些都是整数样本，浮点数样本是 32-bit。\n波形 \u0026 频谱 \u0026 光谱\n波形图是基于采样点上振幅值所表示的曲线图，横轴是时间，纵轴是振幅值。\n波形示例 频谱是振幅数据经过离散傅立叶变换得到的，横轴是频率，纵轴是振幅值。\n频率随时间的变化 波形图和频谱图刻画的是振幅在时间/频率维度的变化，光谱图则表示频率在时间维度上的变化。它对时间进行微分，在每个时间窗口内进行傅立叶变化，得到该时刻的频谱，最后将所有时刻的频谱拼接起来，振幅值大小用颜色深浅表示。\n频谱示例 一些深度学习模型对光谱图进行重构，而不是波形图。\n人类的听觉系统对较低频率的变化比对较高频率的变化更敏感，这种灵敏度随着频率的增加而呈对数下降。梅尔谱图考虑到这一特性，对频率进行梅尔滤波。在 Whisper 中的输入就是梅尔谱图，每个样本的大小是 [频率维度，时间帧数]。如果采用 80 个 Mel 滤波器，并将音频信号划分为 3000 帧，那么梅尔谱图的特征大小就是 [80, 3000]。\n梅尔谱图示例 梅尔光谱图可以捕捉到对人类感知而言更有意义的信号，因此在语音识别、音色分类等任务中应用较广。但相比于标准光谱图，梅尔光谱图由于引入滤波操作，会导致信号的过滤，使得从梅尔光谱图转换回波形图变得比较棘手，需要引入 HiFiGAN 这种模型来解决。\n音频信号的预处理流程 第一步：重采样\n大多数深度学习模型都是基于 16 kHz 采样的音频信号进行训练的，为了和这些预训练模型保持一致，我们首先需要对自己的数据集进行重采样（如果原始数据采样频率不是 16 kHz）。\nfrom datasets import Audio minds = minds.cast_column(\"audio\", Audio(sampling_rate=16_000)) 下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz 之后多了更多的样本点。\n8 kHz 采样片段 16 kHz 采样片段 第二步：过滤时长较长的数据\n为了防止推理或者训练的时候内存不足，可以限制数据的时长，将时长超过一定阈值的样本从原始数据中删掉。\n第三步：特征提取\n原始音频数据只有振幅波形，还需要从中抽取更丰富的特征用于模型训练。以 Whisper 为例，其特征提取包含两个部分：\n填充/截断，控制每个样本长度都是 30 秒 将音频矩阵转换为对数梅尔光谱图作为输入特征 音频相关的任务 音频分类：歌曲识别 自动语音识别 (ASR)：将讲者说话的内容自动转录成文字 声纹分割 (speaker diarization)：将播客音频中不同讲者的音频分离开来 Text to Speech：将文字转录为人声 Voice Conversation：输入和输出都是音频 用于处理音频信号的 Transformer 语音作为输入和输出的Transformer结构 模型的输入可以是文本、波形、频谱。对于波形和频谱的输入，可以采用 CNN 来作为特征提取器得到初始表征。模型的输出一般是文本或者频谱，如果想得到波形则可以对频谱进行逆变换。\nCTC 架构\nCTC 全称是 Connectionist Temporal Classification，直译过来就是联结主义时序分类，这是用于训练早期语音模型的损失函数。比如 Wav2Vec2.0 就采用该损失用于下游语音识别任务的微调。在 Wav2Vec2.0 中，模型采用 Temporal Convolution 作为特征抽取器，Transformer 作为编码器。\nWav2Vec 2.0 具体而言，Wav2Vec2.0 首先用卷积层将初始的音频信号离散化，得到初始的音频表征 $\\mathcal{Z}$，注意这里采用的是有 overlap 的滑移窗口。表征 $\\mathcal{Z}$ 随后有两个去处：\n输入 Transformer 编码器得到语义表征 $\\mathcal{C}$。 经过量化得到量化表征 $\\mathcal{Q}$。这里的量化表征可以看作对连续的 $d$ 维表征空间进行离散化，它首先预设有 $G$ 个 $d/G$ 维的子空间，每个子空间里有 $V$ 个条目 (entries)，音频表征 $z \\in \\mathbb{R}^{d}$ 可以转换为 $G$ 个子空间中原型向量 $e \\in \\mathbb{R}^{V \\times d/G}$ 的组合。基于这一思想，我们可以对初始表征 $z$ 进行映射变换得到索引矩阵 $\\mathcal{I} \\in \\mathbb{R}^{G \\times V}$，随后将 $G$ 个子空间中索引概率最大的那一个条目 $i = \\text{argmax}_{j} p_{g,j}$ 拿出来拼接并进行线性变换，得到量化表征 $q \\in \\mathbb{R}^{f}$。 这里对比学习不是作用于 $\\mathcal{Z}$ 和 $\\mathcal{C}$ ，而是引入 product quantization 操作得到量化表征 $\\mathcal{Q}$。可以将量化表征看作是 nn.Embedding，它是有限向量的集合，因为量化表征是 G 个子空间有限条目的线性变换而来，因此它也是离散的。\n在预训练阶段，Wav2Vec2.0 采用语义表征 $\\mathcal{C}$ 与量化表征 $\\mathcal{Q}$ 之间的对比学习损失和量化表征 $\\mathcal{Q}$ 的熵作为损失函数。在微调阶段，Wav2Vec2.0 采用 CTC 损失。假设这里的音频对应文本是 “hello”，经过卷积后得到 20 个 token，这显然和目标文本（5 个字母）不对齐，因此需要用 CTC 损失。在 CTC 中，我们考虑 20 个 token 预测值的排列组合，得到所有这 5 个字母按照 “h -\u003e e -\u003e l -\u003e l -\u003e o” 顺序构成的序列，计算它们的概率和。微调阶段就是希望这个概率最大，比如这个例子中预测值可能是 “hhheeeeelllllllllloo”，这时候再进行解码即可（连续字母去重）。\nSeq2Seq 架构\n在 CTC 架构中，输入和输出都是相同的长度，因此在进行 ASR 等任务时需要引入 CTC 来实现文本对齐。但是在 Seq2Seq 架构中，因为模型采用生成式理念，因此输入和输出的长度可以不一致。比如下面 Whisper 架构：\nWhisper 在 Whisper 中，输入是音频信号转换的梅尔频谱图，输出是文本。\n",
+  "wordCount" : "246",
+  "inLanguage": "zh",
+  "datePublished": "2024-08-08T16:48:01+08:00",
+  "dateModified": "2024-08-08T16:48:01+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "👋 Welcome to Ray’Log"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Ray’Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+    <link rel="icon" href="/images/avatar.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/avatar.png">
+
+<link rel="manifest" href="/images/avatar.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css"
+    integrity="sha384-R4558gYOUz8mP9YWpZJjofhk+zx0AS11p36HnD2ZKj/6JR5z27gSSULCNHIRReVs" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"
+    integrity="sha384-z1fJDqw8ZApjGO3/unPWUPsIymfsJmyrDVWC8Tv/a1HeOtGmkwNd/7xUS0Xcnvsx"
+    crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/contrib/auto-render.min.js"
+    integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR"
+    crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        renderMathInElement(document.body, {
+            
+            
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false },
+                { left: '\\(', right: '\\)', display: false },
+                { left: '\\[', right: '\\]', display: true },
+                { left: "\\begin{equation}", right: "\\end{equation}", display: true },
+                { left: "\\begin{align}", right: "\\end{align}", display: true },
+                { left: "\\begin{alignat}", right: "\\end{alignat}", display: true },
+                { left: "\\begin{gather}", right: "\\end{gather}", display: true },
+                { left: "\\begin{CD}", right: "\\end{CD}", display: true },
+                { left: "\\[", right: "\\]", display: true }
+            ],
+            
+            throwOnError: false,
+            trust: (context) => ['\\htmlId', '\\href'].includes(context.command),
+            macros: {
+                "\\eqref": "\\href{###1}{(\\text{#1})}",
+                "\\ref": "\\href{###1}{\\text{#1}}",
+                "\\label": "\\htmlId{#1}{}"
+            }
+        });
+    });
+</script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+
+    
+    
+    
+    <link rel="stylesheet" href="/css/main.css" media="screen">
+    
+
+
+    
+    <link rel="stylesheet" href="/scss/highlight/github-dark.min.min.66034289ee9a113219a2c4aae0a8bd2095ab255c832a42efcf5863f10814e7a1.css" />
+
+    
+    <script src="/js/highlight.min.min.c607d6febd16934a82eb61d3a896ed9d869f54373cc63ce95864ed5488fe3128.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script>(()=>{var t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,e=localStorage.getItem("theme");t&&e===null&&(localStorage.setItem("theme","dark"),document.documentElement.setAttribute("data-dark-mode","")),t&&e==="dark"&&document.documentElement.setAttribute("data-dark-mode",""),e==="dark"&&document.documentElement.setAttribute("data-dark-mode","")})()</script>
+    </head>
+<body>
+      <main class="wrapper"><nav class="navigation">
+    <section class="container">
+        <a class="navigation-brand" href="/">
+            HOME
+        </a>
+        <input type="checkbox" id="menu-toggle" />
+        <label class="menu-button float-right" for="menu-toggle">
+            <span></span><span></span><span></span>
+        </label>
+        
+        <ul class="navigation-list" id="navigation-list">
+            
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/blog">文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/tags">分类</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/archives">历史文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/guestbook">留言板</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="https://xxx">网站统计</a>
+            </li>
+            
+            
+
+            <li class="navigation-item menu-separator">
+                <span>|</span>
+            </li>
+
+            
+            
+            <li class="navigation-item navigation-social">
+                <a class="navigation-link" href="https://github.com/zruiii"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
+            </li>
+            
+            
+
+            <li class="navigation-item navigation-dark">
+                <button id="mode" type="button" aria-label="toggle user light or dark theme">
+                    <span class="toggle-dark"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>
+                    <span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+                </button>
+            </li>
+
+            
+            
+            
+            
+            
+            
+            
+            <li class="navigation-item navigation-language">
+                <a href="http://localhost:1313/en/">EN</a>
+            </li>
+            
+            
+            
+            
+        </ul>
+        
+    </section>
+</nav>
+<div id="content">
+<article class="blog-single">
+  <header class="blog-title">
+    <h1>如何让大语言模型听到声音</h1>
+  </header>
+
+  <p>
+  <small>
+    2024年8月8日&nbsp;· 246 字&nbsp;· 2 分钟</small>
+
+  
+<p>
+
+  <div class="blog-toc">
+    <nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#了解音频数据">了解音频数据</a></li>
+        <li><a href="#音频信号的预处理流程">音频信号的预处理流程</a></li>
+        <li><a href="#音频相关的任务">音频相关的任务</a></li>
+        <li><a href="#用于处理音频信号的-transformer">用于处理音频信号的 Transformer</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
+
+  <section class="blog-content"><p>本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及用于处理音频信号的 Transformer 模型。</p>
+<h3 id="了解音频数据">了解音频数据</h3>
+<p><strong>频率 &amp; 振幅 &amp; 位深</strong></p>
+<p>声音的本质是连续信号，采样是捕获这种连续值的方法。</p>
+<p>采样率指一秒钟内进行采样的频率，以赫兹 (Hz) 为单位。根据奈奎斯特极限，从信号中能够捕获的最高频率正好是采样率的一半。人类语言的可听频率低于 8 kHz，更高频的声音信号人耳是听不到的。因此，16 kHz 的采样率对于处理音频而言足矣。但是如果采样率低于 8 kHz，就会丢失一些信息，导致声音变得沉闷。如果训练样本中的音频频率不一致，则需要引入<strong>重采样</strong>的预处理步骤来确保采样频率的一致性。</p>
+<p>声音是由人类可听频率内的气压变化产生的，声压的级别用振幅表示。例如，低于 60 分贝(dB) 人耳就很难感知到。位深是用来刻画振幅值的度量精度。常见的位深有 16-bit 和 24-bit，这些都是整数样本，浮点数样本是 32-bit。</p>
+<p><strong>波形 &amp; 频谱 &amp; 光谱</strong></p>
+<p>波形图是基于采样点上振幅值所表示的曲线图，横轴是时间，纵轴是振幅值。</p>
+<div class="image-container">
+    <img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805190849457.png" alt="波形示例" style="zoom:50%;" />
+    <div class="image-caption">波形示例</div>
+</div>
+<p>频谱是振幅数据经过离散傅立叶变换得到的，横轴是频率，纵轴是振幅值。</p>
+<div class="image-container">
+  <img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191047605.png" alt="image-20240805191047605" style="zoom:50%;" />
+  <div class="image-caption">频率随时间的变化</div>
+</div>
+<p>波形图和频谱图刻画的是振幅在时间/频率维度的变化，光谱图则表示频率在时间维度上的变化。它对时间进行微分，在每个时间窗口内进行傅立叶变化，得到该时刻的频谱，最后将所有时刻的频谱拼接起来，振幅值大小用颜色深浅表示。</p>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191528713.png" alt="image-20240805191528713" style="zoom:50%;" />
+<div class="image-caption">频谱示例</div>
+</div>
+<blockquote>
+<p>一些深度学习模型对光谱图进行重构，而不是波形图。</p>
+</blockquote>
+<p>人类的听觉系统对较低频率的变化比对较高频率的变化更敏感，这种灵敏度随着频率的增加而呈对数下降。梅尔谱图考虑到这一特性，对频率进行梅尔滤波。在 Whisper 中的输入就是梅尔谱图，每个样本的大小是 [频率维度，时间帧数]。如果采用 80 个 Mel 滤波器，并将音频信号划分为 3000 帧，那么梅尔谱图的特征大小就是 [80, 3000]。</p>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805191814452.png" alt="image-20240805191814452" style="zoom:50%;" />
+<div class="image-caption">梅尔谱图示例</div>
+</div>
+<p>梅尔光谱图可以捕捉到对人类感知而言更有意义的信号，因此在语音识别、音色分类等任务中应用较广。但相比于标准光谱图，梅尔光谱图由于引入滤波操作，会导致信号的过滤，使得从梅尔光谱图转换回波形图变得比较棘手，需要引入 HiFiGAN 这种模型来解决。</p>
+<h3 id="音频信号的预处理流程">音频信号的预处理流程</h3>
+<p><strong>第一步：重采样</strong></p>
+<p>大多数深度学习模型都是基于 16 kHz 采样的音频信号进行训练的，为了和这些预训练模型保持一致，我们首先需要对自己的数据集进行重采样（如果原始数据采样频率不是 16 kHz）。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">from</span> datasets <span style="color:#f92672">import</span> Audio
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>minds <span style="color:#f92672">=</span> minds<span style="color:#f92672">.</span>cast_column(<span style="color:#e6db74">&#34;audio&#34;</span>, Audio(sampling_rate<span style="color:#f92672">=</span><span style="color:#ae81ff">16_000</span>))
+</span></span></code></pre></div><p>下面两张图是采样前后的直观对比，可以看到将 8 kHz 重采样到 16 kHz 之后多了更多的样本点。</p>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195059588.png" alt="image-20240805195059588" style="zoom:40%;" />
+<div class="image-caption">8 kHz 采样片段</div>
+</div>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240805195114381.png" alt="image-20240805195114381" style="zoom:40%;" />
+<div class="image-caption">16 kHz 采样片段</div>
+</div>
+<p><strong>第二步：过滤时长较长的数据</strong></p>
+<p>为了防止推理或者训练的时候内存不足，可以限制数据的时长，将时长超过一定阈值的样本从原始数据中删掉。</p>
+<p><strong>第三步：特征提取</strong></p>
+<p>原始音频数据只有振幅波形，还需要从中抽取更丰富的特征用于模型训练。以 Whisper 为例，其特征提取包含两个部分：</p>
+<ul>
+<li>填充/截断，控制每个样本长度都是 30 秒</li>
+<li>将音频矩阵转换为对数梅尔光谱图作为输入特征</li>
+</ul>
+<h3 id="音频相关的任务">音频相关的任务</h3>
+<ul>
+<li>音频分类：歌曲识别</li>
+<li>自动语音识别 (ASR)：将讲者说话的内容自动转录成文字</li>
+<li>声纹分割 (speaker diarization)：将播客音频中不同讲者的音频分离开来</li>
+<li>Text to Speech：将文字转录为人声</li>
+<li>Voice Conversation：输入和输出都是音频</li>
+</ul>
+<h3 id="用于处理音频信号的-transformer">用于处理音频信号的 Transformer</h3>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/transformers_blocks.png" alt="The transformer with audio input and output" style="zoom:50%;" />
+<div class="image-caption">语音作为输入和输出的Transformer结构</div>
+</div>
+<p>模型的输入可以是文本、波形、频谱。对于波形和频谱的输入，可以采用 CNN 来作为特征提取器得到初始表征。模型的输出一般是文本或者频谱，如果想得到波形则可以对频谱进行逆变换。</p>
+<p><strong>CTC 架构</strong></p>
+<p>CTC 全称是 Connectionist Temporal Classification，直译过来就是联结主义时序分类，这是用于训练早期语音模型的损失函数。比如 Wav2Vec2.0 就采用该损失用于下游语音识别任务的微调。在 Wav2Vec2.0 中，模型采用 Temporal Convolution 作为特征抽取器，Transformer 作为编码器。</p>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20240806111914404.png" alt="image-20240806111914404" style="zoom:50%;" />
+<div class="image-caption">Wav2Vec 2.0</div>
+</div>
+<p>具体而言，Wav2Vec2.0 首先用卷积层将初始的音频信号离散化，得到初始的音频表征 $\mathcal{Z}$，注意这里采用的是有 overlap 的滑移窗口。表征 $\mathcal{Z}$ 随后有两个去处：</p>
+<ul>
+<li>输入 Transformer 编码器得到语义表征 $\mathcal{C}$。</li>
+<li>经过量化得到量化表征 $\mathcal{Q}$。这里的量化表征可以看作对连续的 $d$ 维表征空间进行离散化，它首先预设有 $G$ 个 $d/G$ 维的子空间，每个子空间里有 $V$ 个条目 (entries)，音频表征 $z \in \mathbb{R}^{d}$ 可以转换为 $G$ 个子空间中原型向量 $e \in \mathbb{R}^{V \times d/G}$ 的组合。基于这一思想，我们可以对初始表征 $z$ 进行映射变换得到索引矩阵 $\mathcal{I} \in \mathbb{R}^{G \times V}$，随后将 $G$ 个子空间中索引概率最大的那一个条目 $i = \text{argmax}_{j} p_{g,j}$ 拿出来拼接并进行线性变换，得到量化表征 $q \in \mathbb{R}^{f}$。</li>
+</ul>
+<blockquote>
+<p>这里对比学习不是作用于 $\mathcal{Z}$ 和 $\mathcal{C}$ ，而是引入 product quantization 操作得到量化表征 $\mathcal{Q}$。可以将量化表征看作是 nn.Embedding，它是有限向量的集合，因为量化表征是 G 个子空间有限条目的线性变换而来，因此它也是离散的。</p>
+</blockquote>
+<p>在预训练阶段，Wav2Vec2.0 采用语义表征 $\mathcal{C}$ 与量化表征 $\mathcal{Q}$ 之间的对比学习损失和量化表征 $\mathcal{Q}$ 的熵作为损失函数。在微调阶段，Wav2Vec2.0 采用 CTC 损失。假设这里的音频对应文本是 &ldquo;hello&rdquo;，经过卷积后得到 20 个 token，这显然和目标文本（5 个字母）不对齐，因此需要用 CTC 损失。在 CTC 中，我们考虑 20 个 token 预测值的排列组合，得到所有这 5 个字母按照 &ldquo;h -&gt; e -&gt; l -&gt; l -&gt; o&rdquo; 顺序构成的序列，计算它们的概率和。微调阶段就是希望这个概率最大，比如这个例子中预测值可能是 &ldquo;hhheeeeelllllllllloo&rdquo;，这时候再进行解码即可（连续字母去重）。</p>
+<p><strong>Seq2Seq 架构</strong></p>
+<p>在 CTC 架构中，输入和输出都是相同的长度，因此在进行 ASR 等任务时需要引入 CTC 来实现文本对齐。但是在 Seq2Seq 架构中，因为模型采用生成式理念，因此输入和输出的长度可以不一致。比如下面 Whisper 架构：</p>
+<div class="image-container">
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/whisper_architecture.svg" alt="Whisper is a transformer encoder-decoder model" style="zoom:60%;" />
+<div class="image-caption">Whisper</div>
+</div>
+<p>在 Whisper 中，输入是音频信号转换的梅尔频谱图，输出是文本。</p></section>
+
+  
+  
+
+  
+
+
+  
+  
+</article>
+
+
+        </div><footer class="footer">
+  <p>&copy; 2024 <a href="http://localhost:1313/">Ray’Log</a>
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>
+    <a href="https://github.com/guangzhengli/hugo-theme-ladder" rel="noopener" target="_blank">Ladder</a>
+️  </p>
+</footer>
+
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.5376 22.7916C11.0152 22.7207 22.5795 21.1781 22.0978 10.4211C22.0536 9.43274 21.9303 8.53367 21.7387 7.71865M10.5376 22.7916C16.876 22.3728 20.0969 19.8899 21.5383 16.9142M10.5376 22.7916C9.7707 22.9055 8.97982 22.8964 8.19743 22.7725M21.7387 7.71865C21.4988 6.69828 21.1518 5.80967 20.7188 5.04257M21.7387 7.71865C22.6022 10.1105 23.0542 13.7848 21.5383 16.9142M20.7188 5.04257C17.1684 -1.24629 7.83127 0.632493 4.27577 5.04257C2.88063 6.77451 -0.0433281 11.1668 1.38159 16.6571C2.27481 20.0988 5.17269 22.2936 8.19743 22.7725M20.7188 5.04257C22.0697 6.9404 24.0299 11.3848 22.3541 15.4153M21.5383 16.9142C21.8737 16.4251 22.1428 15.9235 22.3541 15.4153M8.19743 22.7725C12.1971 23.4683 20.6281 22.971 22.3541 15.4153M14 10.945C13.3836 10.289 12.003 8.63215 11.2034 7.04814C11.1703 6.98257 11.0247 6.98456 10.9937 7.05061C10.5221 8.05496 9.07362 9.92941 8 10.945M11.0333 7.44444C10.9392 9.86549 11 15 12 17" stroke="currentColor" stroke-linecap="round"/>
+    </svg>
+</a>
+
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'Copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'Copied';
+            setTimeout(() => {
+                copybutton.innerHTML = 'Copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+        codeblock.parentNode.appendChild(copybutton);
+    });
+</script>
+
+
+</main>
+    </body>
+  
+  <script src="/main.min.6bb26b69159420159c74dc9e097b06a578ed2b68c701466a91a44a9632d851bd0af167a1b30012387b4c512b48ad9ad4d3394e04d77ae38d57e1920fe4ed34fe.js" integrity="sha512-a7JraRWUIBWcdNyeCXsGpXjtK2jHAUZqkaRKljLYUb0K8WehswASOHtMUStIrZrU0zlOBNd6441X4ZIP5O00/g==" crossorigin="anonymous" defer></script>
+</html>

@@ -17,13 +17,13 @@ params:
   favicon: /images/avatar.png
   options:
     showDarkMode: true
-    enableImgZooming: true
+    enableImgZooming: false
     enableMultiLang: true
   darkModeTheme: data-dark-mode
   #darkModeTheme: icy-dark-mode
   comments:
     giscus:
-      enable: true
+      enable: false
       repo: username/repo
       repo_id: xxx
       category: Announcements
@@ -105,3 +105,8 @@ languages:
 taxonomies:
   series: series
   tag: tags
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true

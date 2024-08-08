@@ -4,16 +4,18 @@
     <title>Blogs on Ray’Log</title>
     <link>http://localhost:1313/en/blog/</link>
     <description>Recent content in Blogs on Ray’Log</description>
-    <generator>Hugo</generator>
+    <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate>
-    <atom:link href="http://localhost:1313/en/blog/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/en/blog/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>An English Test Blog</title>
       <link>http://localhost:1313/en/blog/test-en-blog/</link>
       <pubDate>Wed, 24 Jul 2024 23:55:52 +0800</pubDate>
+      
       <guid>http://localhost:1313/en/blog/test-en-blog/</guid>
-      <description>&lt;p&gt;Here is summary.&lt;/p&gt;</description>
+      <description>&lt;p&gt;Here is summary.&lt;/p&gt;
+&lt;p&gt;here is your content.&lt;/p&gt;</description>
     </item>
+    
   </channel>
 </rss>

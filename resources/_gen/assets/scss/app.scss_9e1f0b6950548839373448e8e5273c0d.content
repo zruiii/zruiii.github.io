@@ -17,8 +17,8 @@ body {
   line-height: 1.8em; }
   @media only screen and (max-width: 768px) {
     body {
-      font-size: 1.6em;
-      line-height: 1.6em; } }
+      font-size: 1.8em;
+      line-height: 1.8em; } }
 a {
   font-weight: 500;
   color: black;
@@ -198,6 +198,19 @@ table th {
 
 img {
   max-width: 100%; }
+
+.image-container {
+  text-align: center;
+  margin: 20px 0; }
+
+.image-container img {
+  max-width: 100%;
+  height: auto; }
+
+.image-caption {
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: #555; }
 
 [data-dark-mode] body .navigation .navigation-list .navigation-dark .toggle-light {
   display: block;

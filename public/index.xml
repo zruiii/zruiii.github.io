@@ -2,17 +2,46 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Ray’Log</title>
-    <link>http://localhost:1313/</link>
+    <link>https://zruiii.github.io/</link>
     <description>Recent content on Ray’Log</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
-    <lastBuildDate>Thu, 08 Aug 2024 16:48:01 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 02 Jan 2025 22:54:38 +0800</lastBuildDate><atom:link href="https://zruiii.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2025年的一些计划（上）</title>
+      <link>https://zruiii.github.io/blog/2025%E5%B9%B4%E7%9A%84%E4%B8%80%E4%BA%9B%E8%AE%A1%E5%88%92/</link>
+      <pubDate>Thu, 02 Jan 2025 22:54:38 +0800</pubDate>
+      
+      <guid>https://zruiii.github.io/blog/2025%E5%B9%B4%E7%9A%84%E4%B8%80%E4%BA%9B%E8%AE%A1%E5%88%92/</guid>
+      <description>&lt;p&gt;博客很久没更新了。原计划能周更，没想到自从8月份建站以来，一转眼就是新的一年，也是该写点东西了。&lt;/p&gt;
+&lt;p&gt;本来想规划2025年的年度计划，盘算了下，一年这个尺度还是太长了，容易没有紧凑感。&lt;/p&gt;
+&lt;p&gt;所以，在这个相隔许久的博客里，做一下2025的上半年规划吧😊&lt;/p&gt;
+&lt;h3 id=&#34;工作方面&#34;&gt;工作方面&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;每周更新一次博客&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;坚持写代码，提交到GitHub&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;尝试做一些开源项目，半年内至少开源三个小项目&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;坚持每天更新 X 和小红书，X 能做到100个粉丝&lt;/strong&gt;&lt;/p&gt;
+&lt;h3 id=&#34;健康方面&#34;&gt;健康方面&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;空腹体重增加 2kg&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;每周坚持三大项训练&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;半年后进行全面体检&lt;/strong&gt;&lt;/p&gt;
+&lt;h3 id=&#34;学习方面&#34;&gt;学习方面&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;提高英语听力和口语水平&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;（探索）录纯英文的 vlog&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;平均每个月能阅读一本书&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;平均每天刷一道 leetcode&lt;/strong&gt;&lt;/p&gt;
+&lt;h3 id=&#34;减法&#34;&gt;减法&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;减少周末睡懒觉的时间&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;减少周末打游戏刷剧的时间&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;减少工作间隙休息频率&lt;/strong&gt;&lt;/p&gt;</description>
+    </item>
+    
     <item>
       <title>如何让大语言模型听到声音(一)</title>
-      <link>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</link>
+      <link>https://zruiii.github.io/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</link>
       <pubDate>Thu, 08 Aug 2024 16:48:01 +0800</pubDate>
       
-      <guid>http://localhost:1313/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</guid>
+      <guid>https://zruiii.github.io/blog/%E5%A6%82%E4%BD%95%E8%AE%A9%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E5%90%AC%E5%88%B0%E5%A3%B0%E9%9F%B3/</guid>
       <description>&lt;p&gt;本文介绍了音频数据的基本概念、音频信号的预处理流程、音频相关任务以及在深度学习领域，处理音频信号的两种常见架构。&lt;/p&gt;
 &lt;h2 id=&#34;了解音频数据&#34;&gt;了解音频数据&lt;/h2&gt;
 &lt;h3 id=&#34;1-频率--振幅--位深&#34;&gt;1. 频率 &amp;amp; 振幅 &amp;amp; 位深&lt;/h3&gt;

@@ -2,61 +2,61 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/en/blog/test-en-blog/</loc>
+    <loc>https://zruiii.github.io/en/blog/test-en-blog/</loc>
     <lastmod>2024-07-24T23:55:52+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/en/blog/</loc>
-    <lastmod>2024-07-24T23:55:52+08:00</lastmod>
-    <xhtml:link
-                rel="alternate"
-                hreflang="zh"
-                href="http://localhost:1313/blog/"
-                />
-    <xhtml:link
-                rel="alternate"
-                hreflang="en"
-                href="http://localhost:1313/en/blog/"
-                />
-  </url><url>
-    <loc>http://localhost:1313/en/</loc>
+    <loc>https://zruiii.github.io/en/blog/</loc>
     <lastmod>2024-07-24T23:55:52+08:00</lastmod>
     <xhtml:link
                 rel="alternate"
                 hreflang="zh"
-                href="http://localhost:1313/"
+                href="https://zruiii.github.io/blog/"
                 />
     <xhtml:link
                 rel="alternate"
                 hreflang="en"
-                href="http://localhost:1313/en/"
+                href="https://zruiii.github.io/en/blog/"
                 />
   </url><url>
-    <loc>http://localhost:1313/en/tags/tag1/</loc>
-    <lastmod>2024-07-24T23:55:52+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/en/tags/</loc>
+    <loc>https://zruiii.github.io/en/</loc>
     <lastmod>2024-07-24T23:55:52+08:00</lastmod>
     <xhtml:link
                 rel="alternate"
                 hreflang="zh"
-                href="http://localhost:1313/tags/"
+                href="https://zruiii.github.io/"
                 />
     <xhtml:link
                 rel="alternate"
                 hreflang="en"
-                href="http://localhost:1313/en/tags/"
+                href="https://zruiii.github.io/en/"
                 />
   </url><url>
-    <loc>http://localhost:1313/en/series/</loc>
+    <loc>https://zruiii.github.io/en/tags/tag1/</loc>
+    <lastmod>2024-07-24T23:55:52+08:00</lastmod>
+  </url><url>
+    <loc>https://zruiii.github.io/en/tags/</loc>
+    <lastmod>2024-07-24T23:55:52+08:00</lastmod>
     <xhtml:link
                 rel="alternate"
                 hreflang="zh"
-                href="http://localhost:1313/series/"
+                href="https://zruiii.github.io/tags/"
                 />
     <xhtml:link
                 rel="alternate"
                 hreflang="en"
-                href="http://localhost:1313/en/series/"
+                href="https://zruiii.github.io/en/tags/"
+                />
+  </url><url>
+    <loc>https://zruiii.github.io/en/series/</loc>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh"
+                href="https://zruiii.github.io/series/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://zruiii.github.io/en/series/"
                 />
   </url>
 </urlset>

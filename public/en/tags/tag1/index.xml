@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tag1 on Ray’Log</title>
-    <link>https://zruiii.github.io/en/tags/tag1/</link>
+    <link>http://localhost:1313/en/tags/tag1/</link>
     <description>Recent content in Tag1 on Ray’Log</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate><atom:link href="https://zruiii.github.io/en/tags/tag1/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 24 Jul 2024 23:55:52 +0800</lastBuildDate><atom:link href="http://localhost:1313/en/tags/tag1/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>An English Test Blog</title>
-      <link>https://zruiii.github.io/en/blog/test-en-blog/</link>
+      <link>http://localhost:1313/en/blog/test-en-blog/</link>
       <pubDate>Wed, 24 Jul 2024 23:55:52 +0800</pubDate>
       
-      <guid>https://zruiii.github.io/en/blog/test-en-blog/</guid>
+      <guid>http://localhost:1313/en/blog/test-en-blog/</guid>
       <description>&lt;p&gt;Here is summary.&lt;/p&gt;
 &lt;p&gt;here is your content.&lt;/p&gt;</description>
     </item>

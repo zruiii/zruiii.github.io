@@ -44,4 +44,43 @@
         {{ $darkModeInit := resources.Get "js/darkmode-init.js" | js.Build | minify -}}
         <script>{{ $darkModeInit.Content | safeJS }}</script>
     {{ end -}}
+
+    {{/* KaTeX */}}
+    <link rel="stylesheet" href="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+            });"></script>
 </head>
+
+
+<style>
+    /* 调整行内公式的大小和粗细 */
+    .katex {
+        font-size: 1em !important;  /* 调整整体字体大小 */
+        font-weight: normal !important;  /* 调整字体粗细 */
+    }
+    
+    /* 调整显示型公式的大小 */
+    .katex-display {
+        font-size: 1.1em !important;  /* 显示型公式稍大一点 */
+    }
+    
+    /* 可选：调整特定元素的样式 */
+    .katex .mord {
+        font-weight: normal !important;
+    }
+    
+    .katex .mbin {
+        font-weight: normal !important;
+    }
+    
+    .katex .mrel {
+        font-weight: normal !important;
+    }
+</style>

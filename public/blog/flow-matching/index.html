@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Matching</title>
+    <meta charset="utf-8">
+    <meta name="description" content="Ladder@生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。
+在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习&quot;云&quot;变成&quot;猫&quot;的运动轨迹，就像给每个点标注一个&quot;速度向量&quot;，告诉它该往哪个方向移动。
+本文将按以下框架展开讨论：
+
+首先介绍Normalizing Flow的基本原理及其局限性
+然后探讨Flow Matching的动机和核心概念
+最后对比Flow Matching与Diffusion Model的异同
+
+
+NOTE: 引言由 Claude 生成。
+">
+    <meta name="author" content="👋 Welcome to Ray’Log">
+    <link rel="canonical" href="http://localhost:1313/blog/flow-matching/">
+        <meta name="google-site-verification" content="xxx">
+
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:1313//index.xml" title="Ray’Log">
+
+    
+  
+    
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-xxx"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-xxx');
+        }
+      </script>
+    
+  
+
+
+
+
+<script async defer data-website-id="d55626b6-2157-4767-b84b-5f71e5d62ac1" src="https://umami-lime-nu.vercel.app/hugo-ladder"></script>
+
+    <meta property="og:url" content="http://localhost:1313/blog/flow-matching/">
+  <meta property="og:site_name" content="Ray’Log">
+  <meta property="og:title" content="Flow Matching">
+  <meta property="og:description" content="生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。
+在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习&#34;云&#34;变成&#34;猫&#34;的运动轨迹，就像给每个点标注一个&#34;速度向量&#34;，告诉它该往哪个方向移动。
+本文将按以下框架展开讨论：
+首先介绍Normalizing Flow的基本原理及其局限性 然后探讨Flow Matching的动机和核心概念 最后对比Flow Matching与Diffusion Model的异同 NOTE: 引言由 Claude 生成。">
+  <meta property="og:locale" content="zh">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="blog">
+    <meta property="article:published_time" content="2025-02-11T16:57:10+08:00">
+    <meta property="article:modified_time" content="2025-02-11T16:57:10+08:00">
+
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Flow Matching">
+  <meta name="twitter:description" content="生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。
+在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习&#34;云&#34;变成&#34;猫&#34;的运动轨迹，就像给每个点标注一个&#34;速度向量&#34;，告诉它该往哪个方向移动。
+本文将按以下框架展开讨论：
+首先介绍Normalizing Flow的基本原理及其局限性 然后探讨Flow Matching的动机和核心概念 最后对比Flow Matching与Diffusion Model的异同 NOTE: 引言由 Claude 生成。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Blogs",
+      "item": "http://localhost:1313/blog/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Flow Matching",
+      "item": "http://localhost:1313/blog/flow-matching/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Flow Matching",
+  "name": "Flow Matching",
+  "description": "生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。\n在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习\u0026quot;云\u0026quot;变成\u0026quot;猫\u0026quot;的运动轨迹，就像给每个点标注一个\u0026quot;速度向量\u0026quot;，告诉它该往哪个方向移动。\n本文将按以下框架展开讨论：\n首先介绍Normalizing Flow的基本原理及其局限性 然后探讨Flow Matching的动机和核心概念 最后对比Flow Matching与Diffusion Model的异同 NOTE: 引言由 Claude 生成。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。\n在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习\"云\"变成\"猫\"的运动轨迹，就像给每个点标注一个\"速度向量\"，告诉它该往哪个方向移动。\n本文将按以下框架展开讨论：\n首先介绍Normalizing Flow的基本原理及其局限性 然后探讨Flow Matching的动机和核心概念 最后对比Flow Matching与Diffusion Model的异同 NOTE: 引言由 Claude 生成。\n1. Normalization Flow 1.1 动机 假设真实样本服从某个未知分布 $p_{\\text{data}}(x)$，我们观测到的样本均属于该分布。理论上，从该分布中采样可以生成未观测到的数据（即合成样本）。VAE 和 GAN 这类生成模型的核心思想正是基于观测数据建模真实分布：\nVAE 通过变分推断逼近真实分布，但依赖近似后验分布，可能导致生成样本模糊； GAN 通过对抗训练隐式学习分布，但无法直接计算似然，且训练不稳定。 为此，Normalizing Flow提出了一种新的思路：通过设计一系列可逆变换，将简单的初始分布（如高斯分布）精确地映射到复杂的数据分布。这种方法的优势在于可以直接计算似然，从而通过极大似然估计优化模型。\n1.2 方法 1.2.1 变量变换公式 根据概率密度守恒定律，若 $x = G_{\\theta}(z)$ 是可逆变换且 $G_{\\theta}$ 可微，则对任意区域 $\\mathcal{Z}$ 和其映射区域 $\\mathcal{X} = G_{\\theta}(\\mathcal{Z})$，有：\n$$ \\int_{\\mathcal{Z}} p_{\\text{base}}(z) dz = \\int_{\\mathcal{X}} p_{\\theta}(x) dx. $$ 结合变量变换定理，可推导出生成分布密度的显式表达式：\n$$ p_{\\theta}(x) = p_{\\text{base}}\\left( G_{\\theta}^{-1}(x) \\right) \\cdot \\left| \\det J_{G_{\\theta}^{-1}}(x) \\right|, $$ 其中 $J_{G_{\\theta}^{-1}}(x) = \\frac{\\partial G_{\\theta}^{-1}(x)}{\\partial x}$ 是逆变换的雅可比矩阵。\n这个公式揭示了一个重要的性质：只要我们的生成器 $G_{\\theta}$​ 是可逆的，并且我们可以计算出它的雅可比矩阵，那么就可以精确地计算出生成分布的概率密度。 这意味着我们可以直接采用极大似然估计来评估模型生成的样本质量，而不需要像GAN那样依赖判别器的反馈。\n1.2.2 极大似然估计 模型通过最小化负对数似然损失进行优化： $$ \\mathcal{L}(\\theta) = -\\mathbb{E}_{x \\sim p_{\\text{data}}(x)} \\left[ \\log p_{\\theta}(x) \\right]. $$ 将公式(2)代入并展开：\n$$ \\mathcal{L}(\\theta) = -\\mathbb{E}_{x} \\left[ \\log p_{\\text{base}}\\left( G_{\\theta}^{-1}(x) \\right) + \\log \\left| \\det J_{G_{\\theta}^{-1}}(x) \\right| \\right]. $$ 进一步利用 $z = G_{\\theta}^{-1}(x)$ 的关系，可等价表示为对隐变量 $z$ 的优化：\n$$ \\mathcal{L}(\\theta) = -\\mathbb{E}_{z \\sim p_{\\text{base}}(z)} \\left[ \\log p_{\\text{base}}(z) - \\log \\left| \\det J_{G_{\\theta}}(z) \\right| \\right]. $$ 1.2.3 NF 的局限性 Normalizing Flow 虽然理论优美，但存在几个关键限制：\n生成器必须严格可逆，这限制了模型的表达能力 雅可比行列式的计算复杂度高，特别是在高维数据上 对生成器结构的约束可能影响生成质量 1.3 连续正则化流（CNF） 正则化流需要设计一系列离散的可逆变换来实现分布转换。连续正则化流 (Continuous Normalizing Flow, CNF) 则提供了一个优雅的推广：将离散变换扩展到连续时间域，通过常微分方程(ODE)来描述分布的演化过程。\nCNF的核心思想是将分布的变换看作是一个连续的动力学系统。在这个系统中：\n每个数据点都遵循一条由神经网络定义的轨迹 轨迹由向量场驱动（类似物理中的速度场） 整体分布的演化满足概率守恒定律 连续性方程 概率密度演化遵循连续性方程： $$ \\frac{\\partial p_t}{\\partial t} + \\nabla \\cdot (p_t \\cdot u_t) = 0 $$ 其中 $p_t$ 是时间 t 处的概率密度，$u_t$ 是向量场。\n该方程的物理意义在于：概率密度的局部变化率（时间导数）与概率流的净流出率（散度）之和为零，确保概率守恒。\n其物理意义类似于人群流动：如果把 $p_t(x)$ 看作人群密度，$u_t(x)$ 看作移动速度，那么 $p_t(x) \\cdot u_t(x)$ 就表示单位时间内通过某点的人流量。\n似然计算 基于连续性方程，我们可以推导出概率密度的对数似然： $$ log p_θ(x) = log p_{base}(z) + ∫_{t=0}^1 -div(u_t(x_t, θ)) dt \\\\ z = x - ∫_{t=0}^1 u_t(x_t, θ)dt $$ 然而，模型中包含了从 t=0 到 t=1 的积分项，这种积分在实践中无法直接计算，需要使用常微分方程(ODE)求解器来数值求解。\nODE求解器在计算过程中需要多次评估矢量场($u_t$)，每次评估都涉及到复杂的计算。当数据规模变大时，计算成本会显著增加。\n因此，这限制了模型在实际大规模应用中的使用，进而引出了 Flow Matching 的出现。\n2. Flow Matching 2.1 动机 Flow Matching 的提出源于一个关键洞察：我们是否必须显式计算概率密度的变化？如果我们能直接学习数据点是如何\"移动\"的，是否可以绕过传统方法的限制？\n这种思路启发自物理学中的流体动力学：与其追踪水的密度变化，不如直接描述水的流动方向和速度。这就是Flow Matching的核心思想：学习一个描述数据如何演化的向量场。\n2.2 方法 2.2.1 流匹配（FM） 不同于正则化流通过最大似然来学习分布转换，流匹配提出直接学习一个矢量场，该矢量场定义了从数据分布到目标分布的演化路径。\n流匹配的核心思想是：每个观测样本都可以从一个简单分布（如高斯分布）通过连续演化得到。这种演化由向量场控制，因此优化目标转化为最小化向量场的差异： $$ \\mathcal{L}_{\\text{FM}}(\\theta) = \\mathbb{E}_{t,p_t(x_t)} \\left\\| v_t(x_t, \\theta) - u_t(x_t) \\right\\|^2 $$ 其中：\n$v_t(x_t, \\theta)$：神经网络建模的向量场（可学习参数 $\\theta$） $u_t(x_t)$：生成目标路径 $p_t(x)$ 的理想向量场（未知） $t \\sim \\mathcal{U}[0,1]$​：时间均匀采样 然而，直接求解这个优化目标非常困难。首先，我们并不知道概率流 $p_t(x)$ 和向量场 $u_t(x)$​ 的值。其次，FM 的损失函数计算涉及到高维积分，计算起来十分复杂。为此，Flow Matching 进一步提出了条件流匹配的解决策略。\n2.2.2 条件流匹配（CFM） 为解决直接优化 FM 损失函数的困难，条件流匹配（CFM）将全局问题分解为样本级路径。即不要试图同时学习所有数据点的运动，而是为每个数据点分别学习一条路径。\n具体而言：对于每个真实数据点 $x_1$​，我们定义一条从简单分布到该点的路径；通过优化每条路径上的向量场，最终得到整体的生成模型。下面我们来推导这个方法：\n边际向量场 结合贝叶斯定理，我们可以推导边际向量场： $$ \\begin{aligned} u_t(x) \u0026= \\int u_t(x|x_1)p(x_1|x)dx_1 \\\\ \u0026= \\int u_t(x|x_1) \\frac{p_t(x|x_1) q(x_1)}{p_t(x)} dx_1 \\end{aligned} $$ CFM 优化目标\n回顾Flow Matching的损失函数： $$ \\begin{aligned} \\mathcal{L}_{\\text{FM}}(\\theta) \u0026= \\mathbb{E}_{t,p_t(x)} \\left\\| v_t(x) - u_t(x) \\right\\|^2 \\\\ \u0026= \\mathbb{E}_{t,p_t(x)} [\\|v_t(x)\\|^2 - 2 \\cdot v_t(x)u_t(x) + \\|u_t(x)\\|^2] \\\\ \\end{aligned} $$ 代入边际向量场表达式，我们可以得到： $$ \\begin{aligned} \\mathbb{E}_{x_t \\sim p_t(x)}[2 \\cdot v_t(x)u_t(x)] \u0026= 2 \\cdot \\int v_t(x_t) \\cdot \\frac{\\int u_t(x_t|x_1)p_t(x_t|x_1) q(x_1)dx_1}{p_t(x_t)} p_t(x_t)dx_t \\\\ \u0026= 2 \\cdot \\int \\int v_t(x) u_t(x_t|x_1)p_t(x_t|x_1) q(x_1) dx_1 dx_t \\\\ \u0026= 2 \\cdot \\mathbb{E}_{x_t \\sim p_t(x_t|x_1), x_1 \\sim q(x_1)} [v_t(x_t) \\cdot u_t(x_t|x_1)] \\end{aligned} \\\\ $$ 因此，我们可以将 FM 的损失函数转换为条件形式： $$ \\begin{aligned} \\mathcal{L}_{\\text{FM}}(\\theta) \u0026= \\mathbb{E}_{x_t \\sim p_t(x_t|x_1), x_1 \\sim q(x_1)} [\\|v_t(x)\\|^2 - 2 \\cdot v_t(x_t)u_t(x_t|x_1) + \\|u_t(x_t|x_1)\\|^2 + \\|u_t(x_t)\\|^2 - \\|u_t(x_t|x_1)\\|^2 ] \\\\ \u0026= \\mathbb{E}_{x_t \\sim p_t(x_t|x_1), x_1 \\sim q(x_1)} \\left\\| v_t(x) - u_t(x|x_1) \\right\\|^2 \\\\ \u0026+ \\mathbb{E}_{x_t \\sim p_t(x_t|x_1), x_1 \\sim q(x_1)} [\\|u_x(x_t)\\|^2]\\\\ \u0026+ \\mathbb{E}_{x_t \\sim p_t(x_t|x_1), x_1 \\sim q(x_1)} [\\|u_t(x_t|x_1)\\|^2] \\end{aligned} $$ 因为后面两项并不涉及我们要优化的网络参数 $v_t(x_t, \\theta)$，因此可以舍弃。\n这就得到了 CFM 的最终优化目标： $$ \\mathcal{L}_{\\text{CFM}}(\\theta) = \\mathbb{E}_{t, q(x_1), p_t(x|x_1)} \\left\\| v_t(x) - u_t(x|x_1) \\right\\|^2 $$ 这个目标函数的优势在于：\n避免了计算复杂的边际分布 可以针对每个数据点独立优化路径 训练过程更加稳定和高效 2.2.3 CFM 中的训练采样策略 在CFM的训练过程中，我们需要考虑两个关键的采样问题：中间点x_t的采样和条件向量场的设计。\n中间点 $x_t$ 的采样 对于损失函数中的x_t，最常用的采样方式是线性插值：\n$ x_t = (1-t)x_0 + tx_1 $\n其中：\nt是从[0,1]均匀采样的时间点 $x_0$ 是从初始分布（如标准正态分布）采样的点 $x_1$ 是目标数据点 这种采样方式的优势在于：\n保证了在 t=0 时得到 $x_0$，在 t=1 时得到 $x_1$ 提供了一条直观的线性轨迹 计算简单且数值稳定 条件向量场的设计 在实际实现中，条件向量场 $u_t(x|x_1)$ 是可以自定义的。最简单和常用的设计是线性插值：\n$ u_t(x|x_1) = x_1 - x $\n这种设计的物理含义是：在时间 $t$ 处的点 $x$，其运动方向应该指向目标点 $x_1$。这样设计的好处是：\n简单直观：向量场直接指向目标位置 保证收敛：如果完美地学习了这个向量场，那么轨迹终点一定是目标点 $x_1$ 计算高效：不需要复杂的计算就能得到向量场的值 除了线性插值，还可以设计其他形式的条件向量场，比如：\n加入噪声的线性插值：$u_t(x|x_1) = x_1 - x + \\epsilon$，其中$\\epsilon$是随机噪声 基于距离的加权：$u_t(x|x_1) = w(t)(x_1 - x)$，其中$w(t)$是时间相关的权重函数 选择合适的条件向量场对模型的性能有重要影响。通常来说，向量场应该满足：从初始分布能够平滑地演化到目标分布，且路径应该尽可能简单和稳定。\n3. Flow Matching vs Diffusion Reference Flow Matching | Explanation + PyTorch Implementation How I Understand Flow Matching Flow Matching for Generative Modeling ",
+  "wordCount" : "529",
+  "inLanguage": "zh",
+  "datePublished": "2025-02-11T16:57:10+08:00",
+  "dateModified": "2025-02-11T16:57:10+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "👋 Welcome to Ray’Log"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/blog/flow-matching/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Ray’Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+    <link rel="icon" href="/images/avatar.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/avatar.png">
+
+<link rel="manifest" href="/images/avatar.png">
+    
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+
+    
+    
+    
+    <link rel="stylesheet" href="/css/main.css" media="screen">
+    
+
+
+    
+    <link rel="stylesheet" href="/scss/highlight/github-dark.min.min.66034289ee9a113219a2c4aae0a8bd2095ab255c832a42efcf5863f10814e7a1.css" />
+
+    
+    <script src="/js/highlight.min.min.c607d6febd16934a82eb61d3a896ed9d869f54373cc63ce95864ed5488fe3128.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script>(()=>{var t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,e=localStorage.getItem("theme");t&&e===null&&(localStorage.setItem("theme","dark"),document.documentElement.setAttribute("data-dark-mode","")),t&&e==="dark"&&document.documentElement.setAttribute("data-dark-mode",""),e==="dark"&&document.documentElement.setAttribute("data-dark-mode","")})()</script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+            });"></script>
+</head>
+
+
+<style>
+     
+    .katex {
+        font-size: 1em !important;   
+        font-weight: normal !important;   
+    }
+    
+     
+    .katex-display {
+        font-size: 1.1em !important;   
+    }
+    
+     
+    .katex .mord {
+        font-weight: normal !important;
+    }
+    
+    .katex .mbin {
+        font-weight: normal !important;
+    }
+    
+    .katex .mrel {
+        font-weight: normal !important;
+    }
+</style><body>
+      <main class="wrapper"><nav class="navigation">
+    <section class="container">
+        <a class="navigation-brand" href="/">
+            HOME
+        </a>
+        <input type="checkbox" id="menu-toggle" />
+        <label class="menu-button float-right" for="menu-toggle">
+            <span></span><span></span><span></span>
+        </label>
+        
+        <ul class="navigation-list" id="navigation-list">
+            
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/blog">文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/tags">分类</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/archives">历史文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/guestbook">留言板</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="https://umami-lime-nu.vercel.app/dashboard">网站统计</a>
+            </li>
+            
+            
+
+            <li class="navigation-item menu-separator">
+                <span>|</span>
+            </li>
+
+            
+            
+            <li class="navigation-item navigation-social">
+                <a class="navigation-link" href="https://github.com/zruiii"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
+            </li>
+            
+            
+
+            <li class="navigation-item navigation-dark">
+                <button id="mode" type="button" aria-label="toggle user light or dark theme">
+                    <span class="toggle-dark"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>
+                    <span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+                </button>
+            </li>
+
+            
+            
+            
+            
+            
+            
+            
+            <li class="navigation-item navigation-language">
+                <a href="http://localhost:1313/en/">EN</a>
+            </li>
+            
+            
+            
+            
+        </ul>
+        
+    </section>
+</nav>
+<div id="content">
+<article class="blog-single">
+  <header class="blog-title">
+    <h1>Flow Matching</h1>
+  </header>
+
+  <p>
+  <small>
+    2025年2月11日&nbsp;· 529 字&nbsp;· 3 分钟</small>
+
+  
+<p>
+
+  <div class="blog-toc">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#1-normalization-flow">1. Normalization Flow</a>
+      <ul>
+        <li><a href="#11-动机">1.1 动机</a></li>
+        <li><a href="#12-方法">1.2 方法</a></li>
+        <li><a href="#13-连续正则化流cnf">1.3 连续正则化流（CNF）</a></li>
+      </ul>
+    </li>
+    <li><a href="#2-flow-matching">2. Flow Matching</a>
+      <ul>
+        <li><a href="#21-动机">2.1 动机</a></li>
+        <li><a href="#22-方法">2.2 方法</a></li>
+      </ul>
+    </li>
+    <li><a href="#3-flow-matching-vs-diffusion">3. Flow Matching vs Diffusion</a>
+      <ul>
+        <li></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
+
+  <section class="blog-content"><p>生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。</p>
+<p>在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习&quot;云&quot;变成&quot;猫&quot;的运动轨迹，就像给每个点标注一个&quot;速度向量&quot;，告诉它该往哪个方向移动。</p>
+<p>本文将按以下框架展开讨论：</p>
+<ol>
+<li>首先介绍Normalizing Flow的基本原理及其局限性</li>
+<li>然后探讨Flow Matching的动机和核心概念</li>
+<li>最后对比Flow Matching与Diffusion Model的异同</li>
+</ol>
+<blockquote>
+<p><em><strong>NOTE: 引言由 Claude 生成。</strong></em></p>
+</blockquote>
+<h2 id="1-normalization-flow">1. Normalization Flow</h2>
+<h3 id="11-动机">1.1 动机</h3>
+<p>假设真实样本服从某个未知分布 $p_{\text{data}}(x)$，我们观测到的样本均属于该分布。理论上，从该分布中采样可以生成未观测到的数据（即合成样本）。VAE 和 GAN 这类生成模型的核心思想正是基于观测数据建模真实分布：</p>
+<ul>
+<li><strong>VAE</strong> 通过变分推断逼近真实分布，但依赖近似后验分布，可能导致生成样本模糊；</li>
+<li><strong>GAN</strong> 通过对抗训练隐式学习分布，但无法直接计算似然，且训练不稳定。</li>
+</ul>
+<p>为此，Normalizing Flow提出了一种新的思路：通过设计一系列可逆变换，将简单的初始分布（如高斯分布）精确地映射到复杂的数据分布。<strong>这种方法的优势在于可以直接计算似然，从而通过极大似然估计优化模型。</strong></p>
+<!-- <img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20250126190244052.png" alt="image-20250126190244052" style="zoom: 25%;" /> -->
+<p><img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20250126190244052.png" 
+alt="image-20250126190244052" 
+style="zoom: 25%; display: block; margin-left: auto; margin-right: auto;" /></p>
+<h3 id="12-方法">1.2 方法</h3>
+<h4 id="121-变量变换公式">1.2.1 变量变换公式</h4>
+<p>根据概率密度守恒定律，若 $x = G_{\theta}(z)$ 是可逆变换且 $G_{\theta}$ 可微，则对任意区域 $\mathcal{Z}$ 和其映射区域 $\mathcal{X} = G_{\theta}(\mathcal{Z})$，有：<br>
+</p>
+$$
+\int_{\mathcal{Z}} p_{\text{base}}(z) dz = \int_{\mathcal{X}} p_{\theta}(x) dx.
+$$
+<p>
+结合变量变换定理，可推导出生成分布密度的显式表达式：<br>
+</p>
+$$
+p_{\theta}(x) = p_{\text{base}}\left( G_{\theta}^{-1}(x) \right) \cdot \left| \det J_{G_{\theta}^{-1}}(x) \right|,
+$$
+<p>
+其中 $J_{G_{\theta}^{-1}}(x) = \frac{\partial G_{\theta}^{-1}(x)}{\partial x}$ 是逆变换的雅可比矩阵。</p>
+<p>这个公式揭示了一个重要的性质：<strong>只要我们的生成器 $G_{\theta}$​ 是可逆的，并且我们可以计算出它的雅可比矩阵，那么就可以精确地计算出生成分布的概率密度。</strong> 这意味着我们可以直接采用极大似然估计来评估模型生成的样本质量，而不需要像GAN那样依赖判别器的反馈。</p>
+<h4 id="122-极大似然估计">1.2.2 极大似然估计</h4>
+<p>模型通过最小化负对数似然损失进行优化：
+</p>
+$$
+\mathcal{L}(\theta) = -\mathbb{E}_{x \sim p_{\text{data}}(x)} \left[ \log p_{\theta}(x) \right].
+$$
+<p>
+将公式(2)代入并展开：<br>
+</p>
+$$
+\mathcal{L}(\theta) = -\mathbb{E}_{x} \left[ \log p_{\text{base}}\left( G_{\theta}^{-1}(x) \right) + \log \left| \det J_{G_{\theta}^{-1}}(x) \right| \right].
+$$
+<p>
+进一步利用 $z = G_{\theta}^{-1}(x)$ 的关系，可等价表示为对隐变量 $z$ 的优化：<br>
+</p>
+$$
+\mathcal{L}(\theta) = -\mathbb{E}_{z \sim p_{\text{base}}(z)} \left[ \log p_{\text{base}}(z) - \log \left| \det J_{G_{\theta}}(z) \right| \right].
+$$
+<h4 id="123-nf-的局限性">1.2.3 NF 的局限性</h4>
+<p>Normalizing Flow 虽然理论优美，但存在几个关键限制：</p>
+<ul>
+<li>生成器必须严格可逆，这限制了模型的表达能力</li>
+<li>雅可比行列式的计算复杂度高，特别是在高维数据上</li>
+<li>对生成器结构的约束可能影响生成质量</li>
+</ul>
+<h3 id="13-连续正则化流cnf">1.3 连续正则化流（CNF）</h3>
+<p>正则化流需要设计一系列离散的可逆变换来实现分布转换。连续正则化流 (Continuous Normalizing Flow, CNF) 则提供了一个优雅的推广：将离散变换扩展到连续时间域，通过常微分方程(ODE)来描述分布的演化过程。</p>
+<p>CNF的核心思想是将分布的变换看作是一个连续的动力学系统。在这个系统中：</p>
+<ul>
+<li>每个数据点都遵循一条由神经网络定义的轨迹</li>
+<li>轨迹由向量场驱动（类似物理中的速度场）</li>
+<li>整体分布的演化满足概率守恒定律</li>
+</ul>
+<h5 id="连续性方程">连续性方程</h5>
+<p>概率密度演化遵循连续性方程：
+</p>
+$$
+\frac{\partial p_t}{\partial t} + \nabla \cdot (p_t \cdot u_t) = 0
+$$
+<p>
+其中 $p_t$ 是时间 t 处的概率密度，$u_t$ 是向量场。</p>
+<p>该方程的物理意义在于：<strong>概率密度的局部变化率（时间导数）与概率流的净流出率（散度）之和为零，确保概率守恒。</strong></p>
+<p>其物理意义类似于人群流动：如果把 $p_t(x)$ 看作人群密度，$u_t(x)$ 看作移动速度，那么 $p_t(x) \cdot u_t(x)$ 就表示单位时间内通过某点的人流量。</p>
+<h5 id="似然计算">似然计算</h5>
+<p>基于连续性方程，我们可以推导出概率密度的对数似然：
+</p>
+$$
+log p_θ(x) = log p_{base}(z) + ∫_{t=0}^1 -div(u_t(x_t, θ)) dt \\
+z = x - ∫_{t=0}^1 u_t(x_t, θ)dt
+$$
+<p>
+然而，模型中包含了从 t=0 到 t=1 的积分项，这种积分在实践中无法直接计算，需要使用常微分方程(ODE)求解器来数值求解。</p>
+<p>ODE求解器在计算过程中需要多次评估矢量场($u_t$)，每次评估都涉及到复杂的计算。当数据规模变大时，计算成本会显著增加。</p>
+<p>因此，这限制了模型在实际大规模应用中的使用，进而引出了 Flow Matching 的出现。</p>
+<h2 id="2-flow-matching">2. Flow Matching</h2>
+<h3 id="21-动机">2.1 动机</h3>
+<p>Flow Matching 的提出源于一个关键洞察：我们是否必须显式计算概率密度的变化？如果我们能直接学习数据点是如何&quot;移动&quot;的，是否可以绕过传统方法的限制？</p>
+<p>这种思路启发自物理学中的流体动力学：与其追踪水的密度变化，不如直接描述水的流动方向和速度。这就是Flow Matching的核心思想：<strong>学习一个描述数据如何演化的向量场。</strong></p>
+<h3 id="22-方法">2.2 方法</h3>
+<h4 id="221-流匹配fm">2.2.1 流匹配（FM）</h4>
+<p>不同于正则化流通过最大似然来学习分布转换，流匹配提出直接学习一个矢量场，该矢量场定义了从数据分布到目标分布的演化路径。</p>
+<p>流匹配的核心思想是：每个观测样本都可以从一个简单分布（如高斯分布）通过连续演化得到。这种演化由向量场控制，因此优化目标转化为最小化向量场的差异：
+</p>
+$$
+\mathcal{L}_{\text{FM}}(\theta) = \mathbb{E}_{t,p_t(x_t)} \left\| v_t(x_t, \theta) - u_t(x_t) \right\|^2
+$$
+<p>
+其中：</p>
+<ul>
+<li>$v_t(x_t, \theta)$：神经网络建模的向量场（可学习参数 $\theta$）</li>
+<li>$u_t(x_t)$：生成目标路径 $p_t(x)$ 的理想向量场（未知）</li>
+<li>$t \sim \mathcal{U}[0,1]$​：时间均匀采样</li>
+</ul>
+<p>然而，直接求解这个优化目标非常困难。首先，我们并不知道概率流 $p_t(x)$ 和向量场 $u_t(x)$​ 的值。其次，FM 的损失函数计算涉及到高维积分，计算起来十分复杂。为此，Flow Matching 进一步提出了条件流匹配的解决策略。</p>
+<h4 id="222-条件流匹配cfm">2.2.2 条件流匹配（CFM）</h4>
+<p>为解决直接优化 FM 损失函数的困难，条件流匹配（CFM）将全局问题分解为样本级路径。即不要试图同时学习所有数据点的运动，而是为每个数据点分别学习一条路径。</p>
+<p>具体而言：对于每个真实数据点 $x_1$​，我们定义一条从简单分布到该点的路径；通过优化每条路径上的向量场，最终得到整体的生成模型。下面我们来推导这个方法：</p>
+<h5 id="边际向量场">边际向量场</h5>
+<p>结合贝叶斯定理，我们可以推导<strong>边际向量场</strong>：
+</p>
+$$
+\begin{aligned}
+u_t(x) &= \int u_t(x|x_1)p(x_1|x)dx_1 \\
+&= \int u_t(x|x_1) \frac{p_t(x|x_1) q(x_1)}{p_t(x)} dx_1
+\end{aligned}
+$$
+<p><strong>CFM 优化目标</strong></p>
+<p>回顾Flow Matching的损失函数：
+</p>
+$$
+\begin{aligned}
+\mathcal{L}_{\text{FM}}(\theta) &= \mathbb{E}_{t,p_t(x)} \left\| v_t(x) - u_t(x) \right\|^2 \\
+&= \mathbb{E}_{t,p_t(x)} [\|v_t(x)\|^2 - 2 \cdot v_t(x)u_t(x) + \|u_t(x)\|^2] \\
+\end{aligned}
+$$
+<p>代入边际向量场表达式，我们可以得到：
+</p>
+$$
+\begin{aligned}
+\mathbb{E}_{x_t \sim p_t(x)}[2 \cdot v_t(x)u_t(x)] &= 2 \cdot \int v_t(x_t) \cdot \frac{\int u_t(x_t|x_1)p_t(x_t|x_1) q(x_1)dx_1}{p_t(x_t)} p_t(x_t)dx_t \\
+&= 2 \cdot \int \int v_t(x) u_t(x_t|x_1)p_t(x_t|x_1) q(x_1) dx_1 dx_t \\
+&= 2 \cdot \mathbb{E}_{x_t \sim p_t(x_t|x_1), x_1 \sim q(x_1)} [v_t(x_t) \cdot u_t(x_t|x_1)]
+\end{aligned} \\
+$$
+<p>因此，我们可以将 FM 的损失函数转换为条件形式：
+</p>
+$$
+\begin{aligned}
+\mathcal{L}_{\text{FM}}(\theta) &= \mathbb{E}_{x_t \sim p_t(x_t|x_1), x_1 \sim q(x_1)} [\|v_t(x)\|^2 - 2 \cdot v_t(x_t)u_t(x_t|x_1) + \|u_t(x_t|x_1)\|^2 + \|u_t(x_t)\|^2 - \|u_t(x_t|x_1)\|^2 ] \\
+&= \mathbb{E}_{x_t \sim p_t(x_t|x_1), x_1 \sim q(x_1)} \left\| v_t(x) - u_t(x|x_1) \right\|^2 \\
+&+ \mathbb{E}_{x_t \sim p_t(x_t|x_1), x_1 \sim q(x_1)} [\|u_x(x_t)\|^2]\\
+&+ \mathbb{E}_{x_t \sim p_t(x_t|x_1), x_1 \sim q(x_1)} [\|u_t(x_t|x_1)\|^2]
+\end{aligned}
+$$
+<p>因为后面两项并不涉及我们要优化的网络参数 $v_t(x_t, \theta)$，因此可以舍弃。</p>
+<p>这就得到了 CFM 的最终优化目标：
+</p>
+$$
+\mathcal{L}_{\text{CFM}}(\theta) = \mathbb{E}_{t, q(x_1), p_t(x|x_1)} \left\| v_t(x) - u_t(x|x_1) \right\|^2
+$$
+<p>这个目标函数的优势在于：</p>
+<ol>
+<li>避免了计算复杂的边际分布</li>
+<li>可以针对每个数据点独立优化路径</li>
+<li>训练过程更加稳定和高效</li>
+</ol>
+<h4 id="223-cfm-中的训练采样策略">2.2.3 CFM 中的训练采样策略</h4>
+<p>在CFM的训练过程中，我们需要考虑两个关键的采样问题：中间点x_t的采样和条件向量场的设计。</p>
+<h5 id="中间点-x_t-的采样">中间点 $x_t$ 的采样</h5>
+<p>对于损失函数中的x_t，最常用的采样方式是线性插值：</p>
+<p>$ x_t = (1-t)x_0 + tx_1 $</p>
+<p>其中：</p>
+<ul>
+<li>t是从[0,1]均匀采样的时间点</li>
+<li>$x_0$ 是从初始分布（如标准正态分布）采样的点</li>
+<li>$x_1$ 是目标数据点</li>
+</ul>
+<p>这种采样方式的优势在于：</p>
+<ol>
+<li>保证了在 t=0 时得到 $x_0$，在 t=1 时得到 $x_1$</li>
+<li>提供了一条直观的线性轨迹</li>
+<li>计算简单且数值稳定</li>
+</ol>
+<h5 id="条件向量场的设计">条件向量场的设计</h5>
+<p>在实际实现中，条件向量场 $u_t(x|x_1)$ 是可以自定义的。最简单和常用的设计是线性插值：</p>
+<p>$ u_t(x|x_1) = x_1 - x $</p>
+<p>这种设计的物理含义是：在时间 $t$ 处的点 $x$，其运动方向应该指向目标点 $x_1$。这样设计的好处是：</p>
+<ol>
+<li>简单直观：向量场直接指向目标位置</li>
+<li>保证收敛：如果完美地学习了这个向量场，那么轨迹终点一定是目标点 $x_1$</li>
+<li>计算高效：不需要复杂的计算就能得到向量场的值</li>
+</ol>
+<p>除了线性插值，还可以设计其他形式的条件向量场，比如：</p>
+<ul>
+<li>加入噪声的线性插值：$u_t(x|x_1) = x_1 - x + \epsilon$，其中$\epsilon$是随机噪声</li>
+<li>基于距离的加权：$u_t(x|x_1) = w(t)(x_1 - x)$，其中$w(t)$是时间相关的权重函数</li>
+</ul>
+<p>选择合适的条件向量场对模型的性能有重要影响。通常来说，向量场应该满足：从初始分布能够平滑地演化到目标分布，且路径应该尽可能简单和稳定。</p>
+<h2 id="3-flow-matching-vs-diffusion">3. Flow Matching vs Diffusion</h2>
+<img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20250126184904307.png" alt="image-20250126184904307" style="zoom:30%; display: block; margin-left: auto; margin-right: auto;" />
+<h4 id="reference">Reference</h4>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=7cMzfkWFWhI&t=916s">Flow Matching | Explanation + PyTorch Implementation</a></li>
+<li><a href="https://www.youtube.com/watch?v=DDq_pIfHqLs">How I Understand Flow Matching</a></li>
+<li><a href="https://arxiv.org/pdf/2210.02747">Flow Matching for Generative Modeling</a></li>
+</ul></section>
+
+  
+  
+  <div class="paginator">
+    
+    
+    <a class="next" href="http://localhost:1313/blog/%E5%86%99%E4%BD%9C%E8%87%AA%E5%AA%92%E4%BD%93%E4%BA%8B%E4%B8%9A%E8%A7%84%E5%88%92/"><span>写作 &amp; 自媒体 &amp; 事业规划</span>
+      <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3.77086 21.1546C11.0491 22.698 21.4339 21.7773 21.4339 16.3608V4.63375C21.4339 3.93962 21.3581 3.30535 21.1917 2.76787M3.77086 21.1546C1.9934 20.7777 0.973585 18.7264 1.08749 16.688C1.2668 13.479 1.15721 9.43135 1.00513 6.21507C0.87809 3.52811 3.12891 1.16316 5.51029 1.25008C9.76594 1.40542 15.377 1.20229 18.7912 1.00542C20.0864 0.930734 20.8406 1.63385 21.1917 2.76787M3.77086 21.1546C4.56586 21.4723 5.49168 21.7879 6.5 22.0658M21.1917 2.76787C23.1097 4.18217 23.13 12.4191 22.9004 16.3608C20.8478 24.0194 12.3061 23.6662 6.5 22.0658M21.1917 2.76787C21.7612 4.51192 22.7203 9.67216 22 16.3608C21.2797 23.0494 11.3665 22.9511 6.5 22.0658M12.055 9C12.711 9.61644 14.3679 10.997 15.9519 11.7966C16.0174 11.8297 16.0154 11.9753 15.9494 12.0063C14.945 12.4779 13.0706 13.9264 12.055 15M15.5556 11.9667C13.1345 12.0608 8 12 6 11" stroke="currentColor" stroke-linecap="round"/>
+      </svg>
+    </a>
+    
+  </div>
+  
+
+  
+
+
+  
+  
+</article>
+
+
+        </div><footer class="footer">
+  <p>&copy; 2025 <a href="http://localhost:1313/">Ray’Log</a>
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>
+    <a href="https://github.com/guangzhengli/hugo-theme-ladder" rel="noopener" target="_blank">Ladder</a>
+️  </p>
+</footer>
+
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.5376 22.7916C11.0152 22.7207 22.5795 21.1781 22.0978 10.4211C22.0536 9.43274 21.9303 8.53367 21.7387 7.71865M10.5376 22.7916C16.876 22.3728 20.0969 19.8899 21.5383 16.9142M10.5376 22.7916C9.7707 22.9055 8.97982 22.8964 8.19743 22.7725M21.7387 7.71865C21.4988 6.69828 21.1518 5.80967 20.7188 5.04257M21.7387 7.71865C22.6022 10.1105 23.0542 13.7848 21.5383 16.9142M20.7188 5.04257C17.1684 -1.24629 7.83127 0.632493 4.27577 5.04257C2.88063 6.77451 -0.0433281 11.1668 1.38159 16.6571C2.27481 20.0988 5.17269 22.2936 8.19743 22.7725M20.7188 5.04257C22.0697 6.9404 24.0299 11.3848 22.3541 15.4153M21.5383 16.9142C21.8737 16.4251 22.1428 15.9235 22.3541 15.4153M8.19743 22.7725C12.1971 23.4683 20.6281 22.971 22.3541 15.4153M14 10.945C13.3836 10.289 12.003 8.63215 11.2034 7.04814C11.1703 6.98257 11.0247 6.98456 10.9937 7.05061C10.5221 8.05496 9.07362 9.92941 8 10.945M11.0333 7.44444C10.9392 9.86549 11 15 12 17" stroke="currentColor" stroke-linecap="round"/>
+    </svg>
+</a>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'Copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'Copied';
+            setTimeout(() => {
+                copybutton.innerHTML = 'Copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+        codeblock.parentNode.appendChild(copybutton);
+    });
+</script></main>
+    </body>
+  
+  <script src="/main.min.6bb26b69159420159c74dc9e097b06a578ed2b68c701466a91a44a9632d851bd0af167a1b30012387b4c512b48ad9ad4d3394e04d77ae38d57e1920fe4ed34fe.js" integrity="sha512-a7JraRWUIBWcdNyeCXsGpXjtK2jHAUZqkaRKljLYUb0K8WehswASOHtMUStIrZrU0zlOBNd6441X4ZIP5O00/g==" crossorigin="anonymous" defer></script></html>

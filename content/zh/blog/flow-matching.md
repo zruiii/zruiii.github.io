@@ -1,10 +1,13 @@
 ---
 title: Flow Matching
 date: 2025-02-11T16:57:10+08:00
-tags: []
+tags: [Generative Models]
 series: []
 featured: true
 ---
+生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。
+
+<!--more-->
 生成模型是深度学习中的重要研究方向，其核心目标是学习复杂的数据分布并生成新样本。在过去的几年中，从VAE、GAN到Diffusion模型，研究者们提出了多种生成模型范式。本文将介绍一个新兴的生成模型方法：Flow Matching，并从其理论发展脉络出发，展现这一方法的独特优势。
 
 在开始之前，让我们通过一个简单的例子来理解Flow Matching的核心思想：想象我们有一团云（简单的高斯分布），我们希望将它逐渐变形成一只猫（复杂的数据分布）。传统的方法可能需要精确计算这个变形过程中的概率变化，而Flow Matching则提供了一种更直观的方式：直接学习"云"变成"猫"的运动轨迹，就像给每个点标注一个"速度向量"，告诉它该往哪个方向移动。
@@ -16,8 +19,6 @@ featured: true
 3. 最后对比Flow Matching与Diffusion Model的异同
 
 > ***NOTE: 引言由 Claude 生成。***
-
-<!--more-->
 
 ## 1. Normalization Flow
 

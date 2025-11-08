@@ -21,7 +21,7 @@ defaults:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       HUGO_VERSION: 0.129.0
     steps:

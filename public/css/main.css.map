@@ -1,7 +1,7 @@
 {
 	"version": 3,
 	"file": "main.css",
-	"sourceRoot": "/Users/zharui/Documents/zruiii.github.io",
+	"sourceRoot": "/Users/kashama/Documents/zruiii.github.io",
 	"sources": [
 		"themes/hugo-theme-ladder/assets/scss/app.scss",
 		"themes/hugo-theme-ladder/assets/scss/common/_variables.scss",

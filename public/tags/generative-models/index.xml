@@ -214,7 +214,44 @@ $$ u_t(x|x_1) = x_1 - x $$
 &lt;p&gt;选择合适的条件向量场对模型的性能有重要影响。通常来说，向量场应该满足：从初始分布能够平滑地演化到目标分布，且路径应该尽可能简单和稳定。&lt;/p&gt;
 &lt;h2 id=&#34;3-flow-matching-vs-diffusion&#34;&gt;3. Flow Matching vs Diffusion&lt;/h2&gt;
 &lt;img src=&#34;https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20250126184904307.png&#34; alt=&#34;image-20250126184904307&#34; style=&#34;zoom:30%; display: block; margin-left: auto; margin-right: auto;&#34; /&gt;
-&lt;h4 id=&#34;reference&#34;&gt;Reference&lt;/h4&gt;
+&lt;p&gt;Diffusion Model 和 Flow Matching 在 motivation 上有明显的区别。前者的思想在于，通过逐步加噪声，把数据变成简单的高斯噪声，反过来，让模型学习逐步去噪，从噪声恢复数据。而后者的研究问题是能否找到从噪声到数据的&amp;quot;最短路径&amp;quot;？为此在数据和噪声之间构造直线插值，让模型学习沿着这条直线的速度场。后者的优势在于路径简单，采样更快（可以用更少的步数）。&lt;/p&gt;
+&lt;p&gt;使用Diffusion Model (如SD 1.5):&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. VAE编码 (与Flow完全相同)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;latent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vae&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;encode(image)  &lt;span style=&#34;color:#75715e&#34;&gt;# [B,3,512,512] → [B,4,64,64]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 2. Diffusion前向过程&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;noise &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;randn_like(latent)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;t &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; random_timestep()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;alpha_t &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; get_alpha(t)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;noisy_latent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; sqrt(alpha_t) &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; latent &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; sqrt(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;alpha_t) &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; noise
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 3. U-Net预测噪声&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;predicted_noise &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; unet(noisy_latent, t, text_embedding)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 4. 训练损失&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;loss &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; mse_loss(predicted_noise, noise)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 5. VAE解码 (与Flow完全相同)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;generated_image &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vae&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;decode(denoised_latent)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;使用Flow Matching (如SD 3):&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. VAE编码 (完全相同!)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;latent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vae&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;encode(image)  &lt;span style=&#34;color:#75715e&#34;&gt;# [B,3,512,512] → [B,4,64,64]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 2. Flow Matching插值&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;noise &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;randn_like(latent)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;t &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; random_t()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;latent_t &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; t &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; latent &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;t) &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; noise  &lt;span style=&#34;color:#75715e&#34;&gt;# 直线插值&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 3. DiT预测速度&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;predicted_velocity &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; dit(latent_t, t, text_embedding)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 4. 训练损失&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;true_velocity &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; latent &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; noise
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;loss &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; mse_loss(predicted_velocity, true_velocity)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 5. VAE解码 (完全相同!)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;generated_image &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vae&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;decode(final_latent)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h4 id=&#34;reference&#34;&gt;Reference&lt;/h4&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;a href=&#34;https://www.youtube.com/watch?v=7cMzfkWFWhI&amp;t=916s&#34;&gt;Flow Matching | Explanation + PyTorch Implementation&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&#34;https://www.youtube.com/watch?v=DDq_pIfHqLs&#34;&gt;How I Understand Flow Matching&lt;/a&gt;&lt;/li&gt;

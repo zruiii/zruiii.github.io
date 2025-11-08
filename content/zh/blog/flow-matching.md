@@ -254,6 +254,51 @@ $$ u_t(x|x_1) = x_1 - x $$
 
 <img src="https://cdn.jsdelivr.net/gh/zruiii/storage.zruiii.com@main/images/image-20250126184904307.png" alt="image-20250126184904307" style="zoom:30%; display: block; margin-left: auto; margin-right: auto;" />
 
+Diffusion Model 和 Flow Matching 在 motivation 上有明显的区别。前者的思想在于，通过逐步加噪声，把数据变成简单的高斯噪声，反过来，让模型学习逐步去噪，从噪声恢复数据。而后者的研究问题是能否找到从噪声到数据的"最短路径"？为此在数据和噪声之间构造直线插值，让模型学习沿着这条直线的速度场。后者的优势在于路径简单，采样更快（可以用更少的步数）。
+
+使用Diffusion Model (如SD 1.5):
+```python
+# 1. VAE编码 (与Flow完全相同)
+latent = vae.encode(image)  # [B,3,512,512] → [B,4,64,64]
+
+# 2. Diffusion前向过程
+noise = torch.randn_like(latent)
+t = random_timestep()
+alpha_t = get_alpha(t)
+noisy_latent = sqrt(alpha_t) * latent + sqrt(1-alpha_t) * noise
+
+# 3. U-Net预测噪声
+predicted_noise = unet(noisy_latent, t, text_embedding)
+
+# 4. 训练损失
+loss = mse_loss(predicted_noise, noise)
+
+# 5. VAE解码 (与Flow完全相同)
+generated_image = vae.decode(denoised_latent)
+```
+
+使用Flow Matching (如SD 3):
+```python
+# 1. VAE编码 (完全相同!)
+latent = vae.encode(image)  # [B,3,512,512] → [B,4,64,64]
+
+# 2. Flow Matching插值
+noise = torch.randn_like(latent)
+t = random_t()
+latent_t = t * latent + (1-t) * noise  # 直线插值
+
+# 3. DiT预测速度
+predicted_velocity = dit(latent_t, t, text_embedding)
+
+# 4. 训练损失
+true_velocity = latent - noise
+loss = mse_loss(predicted_velocity, true_velocity)
+
+# 5. VAE解码 (完全相同!)
+generated_image = vae.decode(final_latent)
+```
+
+
 
 #### Reference
 

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLLM</title>
+    <meta charset="utf-8">
+    <meta name="description" content="Ladder@这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。">
+    <meta name="author" content="👋 Welcome to Ray’Log">
+    <link rel="canonical" href="http://localhost:1313/blog/mllm/">
+        <meta name="google-site-verification" content="xxx">
+
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:1313//index.xml" title="Ray’Log">
+
+    
+  
+    
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-xxx"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-xxx');
+        }
+      </script>
+    
+  
+
+
+
+
+<script async defer data-website-id="d55626b6-2157-4767-b84b-5f71e5d62ac1" src="https://umami-lime-nu.vercel.app/hugo-ladder"></script>
+
+    <meta property="og:url" content="http://localhost:1313/blog/mllm/">
+  <meta property="og:site_name" content="Ray’Log">
+  <meta property="og:title" content="MLLM">
+  <meta property="og:description" content="这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。">
+  <meta property="og:locale" content="zh">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="blog">
+    <meta property="article:published_time" content="2025-11-09T21:25:48+08:00">
+    <meta property="article:modified_time" content="2025-11-09T21:25:48+08:00">
+
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MLLM">
+  <meta name="twitter:description" content="这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Blogs",
+      "item": "http://localhost:1313/blog/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "MLLM",
+      "item": "http://localhost:1313/blog/mllm/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MLLM",
+  "name": "MLLM",
+  "description": "这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。\nQwen-VL Series Qwen-VL Qwen-VL 是 Qwen 系列第一个 VLM 模型，可以解决一些 vision-language 任务，比如 image caption，QA，grounding 等。\n模型设计 Qwen-VL 由三个核心部分构成：\nLLM：使用 Qwen-7B 进行初始化 ViT：使用 Openclip 的 ViT-bigG 预训练权重进行初始化 Position-aware Vision-Language Adapter：一个随机初始化的单层 cross-attention 模块，该模块使用一组可训练向量作为 query 向量，使用来自 ViT 的图像特征作为 key 进行 cross-attention 操作。这种机制将视觉特征序列压缩到256的固定长度。考虑到位置信息对于细粒度图像理解的重要性，在 cross-attention 机制的 query-key 对中加入了2D绝对位置编码，以减轻压缩过程中潜在的位置细节丢失。长度为256的压缩图像特征序列随后被输入到大语言模型中。 为什么要使用可学习的 Query 作为 Adapter？\n直接使用 ViT 的输出作为 LLM 的输入存在严重的效率问题。对于 448×448 的输入图像，ViT 会输出长度为 1024 的特征序列，而 LLM 中的 self-attention 机制具有 $O(n^²)$ 的计算复杂度，这会导致计算成本过高、推理速度慢，并且大量占用 LLM 的上下文窗口。可学习的 Query 提供了一种优雅的解决方案：通过 cross-attention 机制，256 个可学习的 query embedding 在训练过程中学会如何从冗长的视觉特征中提取最关键的信息，类似于“用 256 个问题来总结图像内容”，每个 query 可以专注于不同方面的视觉模式（如物体、纹理、空间关系等）。这种设计带来了两个重要优势：一是实现了信息压缩，将 1024 维序列压缩到固定的 256 维，大幅降低了计算成本；二是保证了固定长度输出，无论输入图像分辨率多大，输出始终是 256，使得 LLM 端的架构设计更加简洁统一。\n模型训练 Stage-1: 预训练\n预训练的数据是 image-text 对，原始数据 50 亿对，清洗后剩余 14 亿对，包含 22.7% 中文和 77.3% 英文。\n在这一阶段，LLM 骨干参数被冻结，仅调整 ViT 和 adapter，输入图像被调整为224 × 224。\nStage-2: 多任务预训练\n这一阶段引入了高质量和细粒度的VL标注数据，使用更大的输入分辨率和交错的 image-text 数据（多张图像输入），将视觉encoder的输入分辨率从224 × 224提高到448 × 448，减少了图像下采样造成的信息损失。\n此外，为了缓解模型知识遗忘的问题，还引入了部分 In-house 数据集进行纯文本的自回归。\n具体而言，各个任务对应的模型输出格式如下所示：\nStage-3: SFT\n这一阶段通过 instruction tuning 得到 Chat 模型，通过混合多模态和纯文本的对话数据，确保模型在对话能力方面的通用性，一共 35w 条训练样本。数据格式如下：\n实验验证 Window Attention vs Global Attention for ViT\n使用高分辨率的 ViT 会增加计算成本，一种可能的优化方案是大部分层使用 Window Attention，只在 224x224 的窗口内做 attention，少数层使用 Global Attention （整个 448x448 或 896x896）。\n实验表明，Window Attention 不会带来明显的速度优势，反而性能下降，因此 Qwen-VL 采用 Global Attention。\nQwen2-VL Qwen2-VL 相比于第一代模型的改进之处还是蛮多的。主要有以下几个方面：\n支持各种分辨率和宽高比 在第一代模型里面，不管输入大小多大，都会被 resize 到固定大小，这种“一刀切”的模式会限制模型在不同尺度上捕捉信息的能力 超长视频理解 上一代模型仅支持图像输入，而 Qwen2-VL 允许输入超过 20 分钟的视频 Agent能力 多语种支持 除了英文和中文，还支持日语、越南语、欧洲语言等 模型设计 Naive Dynamic Resolution\n与 Qwen-VL 不同，Qwen2-VL现在可以处理任意分辨率的图像，动态地将它们转换为可变数量的视觉 tokens。Qwen2-VL 修改了ViT，移除了原始的绝对位置编码，并引入了 2D-RoPE 来捕获图像的二维位置信息。在推理阶段，不同分辨率的图像被打包成单个序列，通过控制打包长度来限制GPU内存使用。此外，为了减少每张图像的视觉tokens，在 ViT 之后使用一个简单的MLP层将相邻的 2×2 tokens压缩成单个token，并在压缩后的视觉 tokens 的开头和结尾放置特殊的 \u003c|vision_start|\u003e 和 \u003c|vision_end|\u003e tokens。因此，一张224×224 分辨率的图像，使用 patch_size=14 的 ViT 编码后，在进入LLM之前会被压缩到 66 个tokens。\n回顾 Qwen-VL 中的做法，通过 adapter 来压缩视觉 token 的长度，但是在这一代模型中则取消这一设计，选择更简单的方式直接将变长的视觉 token 拼接到骨干网络中，其背后的原因可能主要还是 Qwen2 能力提升 + Flash Attention 的效率提升。\nMultimodal Rotary Position Embedding (M-RoPE)\nM-RoPE 将 RoPE 分解为三个组件：时间(temporal)、高度(height)和宽度(width)。\n对于文本输入，这些组件使用相同的位置ID，使M-RoPE在功能上等同于1D-RoPE。在处理图像时，每个视觉 token 的 temporal ID 保持恒定，而高度和宽度组件则根据 token 在图像中的位置分配不同的ID。对于视频，它们被视为帧序列，temporal ID为每一帧递增，而高度和宽度组件遵循与图像相同的ID分配模式。这样做的一个好处在于，降低位置ID值，支持更长序列外推。\n传统方法的问题： 训练时: 文本(100 tokens): ID 0-99 图像(1024 tokens): ID 100-1123 总共: ID 0-1123 ✓ (在训练范围内) 推理时处理更长内容: 文本(100 tokens): ID 0-99 图像1(1024 tokens): ID 100-1123 图像2(1024 tokens): ID 1124-2147 图像3(1024 tokens): ID 2148-3171 ... 图像10: ID达到10000+ ✗ (超出训练范围，外推能力差) M-RoPE的优势： 训练时: 文本(100 tokens): temporal=0-99, h=0, w=0 图像(1024 tokens): temporal=0, h=0-31, w=0-31 最大ID值: 99 (temporal维度) 推理时: 文本(100 tokens): temporal=0-99 图像1: temporal=0, h=0-31, w=0-31 图像2: temporal=1, h=0-31, w=0-31 ← temporal只需+1 图像3: temporal=2, h=0-31, w=0-31 ... 图像100: temporal=99, h=0-31, w=0-31 ✓ (仍在训练范围内！) Unified Image and Video Understanding\nQwen2-VL 在处理视频输入的时候使用 3D 卷积，能够处理 3D tubes 而不是 2D patches。为了保持一致性，每张图像被视作两个相同的帧，也就是 Time 纬度值是1。为了平衡长视频处理的计算需求与整体训练效率，我们动态调整每个视频帧的分辨率，将每个视频的总tokens数限制在16384。\n模型训练 模型训练和 Qwen-VL 一样，仍然是相同的三个阶段训练。\n在预训练阶段，专注训练 ViT，利用大量的 image-text 对、OCR 数据、交错的 image-text 文章等数据。这一阶段使用了大约 6000亿 tokens 的语料库，是 Qwen-VL 的 400 倍。\n在多任务训练阶段，使用大约 8000 亿 tokens，解冻所有参数进行训练。\n在SFT阶段，同样使用纯文本和多模态两种对话数据。值得注意的是，相比上一代模型，这里还使用了 Agent 数据（如UI操作、机器人控制、游戏和导航），即执行FUNCTION，观察 RESULT，进行推理和规划 RETURN。例如：\nQwen2.5-VL 模型设计 ViT 优化\n不同于过去两版模型，Qwen2.5-VL 从头训练了 ViT，包括 CLIP 预训练（对比学习）、vision-language 对齐和端到端 fine-tuning。模型设计上，引入了 LLM 中的一些设计，比如 RMSNorm，SwiGLU。除此以外，又重新引入 Window Attention (Qwen-VL 中被证明没什么用，看来还是和 ViT 本身的结构十分相关)。只有 4 层采用 global attention，其它都是采用 112x112 (8x8 patches) 的窗口注意力。 对于视频数据，两个连续帧被分组在一起，例如 [(f1,f2), (f3,f4), (f5,f6), ...] ，从而显著减少了 tokens 的数量。实际上，如果想要更细粒度的时间尺度，可以提高采样的 FPS。\n绝对时间戳对齐的位置编码\n在Qwen2-VL中，M-RoPE中的temporal位置ID与输入帧数相关联，这没有考虑内容变化的速度或视频内事件的绝对时间。为了解决这一局限，Qwen2.5-VL引入了一个关键改进：将M-RoPE的 temporal 组件与绝对时间对齐。\n模型训练 预训练\n预训练语料从 Qwen2-VL 的 1.2 万亿 token 增加到了 4 万亿，相对应地，在 2.5 版本的技术报告里，数据的构造篇幅占比也显著提升。\n预训练的策略和之前也稍有不同，除了第一阶段仅训练 ViT，第二阶段多任务全参数微调，在第三阶段为了增强模型对长序列、视频和基于 agent 数据的推理能力，纳入了相关的长序列数据。\n后训练\n后训练包含 SFT 和 DPO 两个阶段。在 SFT 阶段，使用大约 200w 条样本，包含纯文本数据 (50%) 和多模态数据 (50%)。\n论文中用了大量篇幅介绍数据的清洗。简单来说，数据的过滤包含规则过滤和模型过滤。例如，在 OCR 任务里面答案是否被截断、HTML 格式是否完整、单元格密度太低等等。模型过滤就是通过多个奖励模型，从多个维度 (例如 query 质量，答案质量，grounding 质量等) 来进行综合打分，根据得分阈值筛选样本。\n此外，论文中还提到使用拒绝采样来增强模型的 CoT 推理能力，这一步应该是在 SFT 之后进行优化的，然后再进行的 DPO。不过关于 DPO 的一些细节论文中并没有介绍太多，有可能这个的作用并不是很大吧。\nInternVL 2.5 [TBD]\nPixtral 12B [TBD]\n",
+  "wordCount" : "455",
+  "inLanguage": "zh",
+  "datePublished": "2025-11-09T21:25:48+08:00",
+  "dateModified": "2025-11-09T21:25:48+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "👋 Welcome to Ray’Log"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/blog/mllm/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Ray’Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+    <link rel="icon" href="/images/avatar.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/avatar.png">
+
+<link rel="manifest" href="/images/avatar.png">
+    
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+
+    
+    
+    
+    <link rel="stylesheet" href="/css/main.css" media="screen">
+    
+
+
+    
+    <link rel="stylesheet" href="/scss/highlight/github-dark.min.min.66034289ee9a113219a2c4aae0a8bd2095ab255c832a42efcf5863f10814e7a1.css" />
+
+    
+    <script src="/js/highlight.min.min.c607d6febd16934a82eb61d3a896ed9d869f54373cc63ce95864ed5488fe3128.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script>(()=>{var t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,e=localStorage.getItem("theme");t&&e===null&&(localStorage.setItem("theme","dark"),document.documentElement.setAttribute("data-dark-mode","")),t&&e==="dark"&&document.documentElement.setAttribute("data-dark-mode",""),e==="dark"&&document.documentElement.setAttribute("data-dark-mode","")})()</script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+            });"></script>
+</head>
+
+
+<style>
+     
+    .katex {
+        font-size: 1em !important;   
+        font-weight: normal !important;   
+    }
+    
+     
+    .katex-display {
+        font-size: 1.1em !important;   
+    }
+    
+     
+    .katex .mord {
+        font-weight: normal !important;
+    }
+    
+    .katex .mbin {
+        font-weight: normal !important;
+    }
+    
+    .katex .mrel {
+        font-weight: normal !important;
+    }
+</style><body>
+      <main class="wrapper"><nav class="navigation">
+    <section class="container">
+        <a class="navigation-brand" href="/">
+            HOME
+        </a>
+        <input type="checkbox" id="menu-toggle" />
+        <label class="menu-button float-right" for="menu-toggle">
+            <span></span><span></span><span></span>
+        </label>
+        
+        <ul class="navigation-list" id="navigation-list">
+            
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/blog">文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/tags">分类</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/archives">历史文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/guestbook">留言板</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="https://umami-lime-nu.vercel.app/dashboard">网站统计</a>
+            </li>
+            
+            
+
+            <li class="navigation-item menu-separator">
+                <span>|</span>
+            </li>
+
+            
+            
+            <li class="navigation-item navigation-social">
+                <a class="navigation-link" href="https://github.com/zruiii"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
+            </li>
+            
+            
+
+            <li class="navigation-item navigation-dark">
+                <button id="mode" type="button" aria-label="toggle user light or dark theme">
+                    <span class="toggle-dark"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>
+                    <span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+                </button>
+            </li>
+
+            
+            
+            
+            
+            
+            
+            
+            <li class="navigation-item navigation-language">
+                <a href="http://localhost:1313/en/">EN</a>
+            </li>
+            
+            
+            
+            
+        </ul>
+        
+    </section>
+</nav>
+<div id="content">
+<article class="blog-single">
+  <header class="blog-title">
+    <h1>MLLM</h1>
+  </header>
+
+  <p>
+  <small>
+    2025年11月9日&nbsp;· 455 字&nbsp;· 3 分钟</small>
+
+  
+<p>
+
+  <div class="blog-toc">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#qwen-vl-series">Qwen-VL Series</a>
+      <ul>
+        <li><a href="#qwen-vl">Qwen-VL</a></li>
+        <li><a href="#qwen2-vl">Qwen2-VL</a></li>
+        <li><a href="#qwen25-vl">Qwen2.5-VL</a></li>
+      </ul>
+    </li>
+    <li><a href="#internvl-25">InternVL 2.5</a></li>
+    <li><a href="#pixtral-12b">Pixtral 12B</a></li>
+  </ul>
+</nav>
+  </div>
+
+  <section class="blog-content"><p>这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。</p>
+<h2 id="qwen-vl-series">Qwen-VL Series</h2>
+<h3 id="qwen-vl">Qwen-VL</h3>
+<p>Qwen-VL 是 Qwen 系列第一个 VLM 模型，可以解决一些 vision-language 任务，比如 image caption，QA，grounding 等。</p>
+<p><img alt="image-20251109135643665" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091412376.png"></p>
+<h4 id="模型设计">模型设计</h4>
+<p>Qwen-VL 由三个核心部分构成：</p>
+<ul>
+<li>LLM：使用 Qwen-7B 进行初始化</li>
+<li>ViT：使用 Openclip 的 ViT-bigG 预训练权重进行初始化</li>
+<li>Position-aware Vision-Language Adapter：一个随机初始化的单层 cross-attention 模块，该模块使用一组可训练向量作为 query 向量，使用来自 ViT 的图像特征作为 key 进行 cross-attention 操作。这种机制将视觉特征序列压缩到256的固定长度。考虑到位置信息对于细粒度图像理解的重要性，在 cross-attention 机制的 query-key 对中加入了2D绝对位置编码，以减轻压缩过程中潜在的位置细节丢失。长度为256的压缩图像特征序列随后被输入到大语言模型中。</li>
+</ul>
+<p><strong>为什么要使用可学习的 Query 作为 Adapter？</strong></p>
+<p>直接使用 ViT 的输出作为 LLM 的输入存在严重的效率问题。对于 448×448 的输入图像，ViT 会输出长度为 1024 的特征序列，而 LLM 中的 self-attention 机制具有 $O(n^²)$ 的计算复杂度，这会导致计算成本过高、推理速度慢，并且大量占用 LLM 的上下文窗口。可学习的 Query 提供了一种优雅的解决方案：通过 cross-attention 机制，256 个可学习的 query embedding 在训练过程中学会如何从冗长的视觉特征中提取最关键的信息，类似于“用 256 个问题来总结图像内容”，每个 query 可以专注于不同方面的视觉模式（如物体、纹理、空间关系等）。这种设计带来了两个重要优势：一是实现了信息压缩，将 1024 维序列压缩到固定的 256 维，大幅降低了计算成本；二是保证了固定长度输出，无论输入图像分辨率多大，输出始终是 256，使得 LLM 端的架构设计更加简洁统一。</p>
+<h4 id="模型训练">模型训练</h4>
+<p><strong>Stage-1: 预训练</strong></p>
+<p>预训练的数据是 image-text 对，原始数据 50 亿对，清洗后剩余 14 亿对，包含 22.7% 中文和 77.3% 英文。</p>
+<p>在这一阶段，LLM 骨干参数被冻结，仅调整 ViT 和 adapter，输入图像被调整为224 × 224。</p>
+<p><strong>Stage-2: 多任务预训练</strong></p>
+<p><img alt="image-20251109140401195" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091411330.png"></p>
+<p>这一阶段引入了高质量和细粒度的VL标注数据，使用更大的输入分辨率和交错的 image-text 数据（多张图像输入），将视觉encoder的输入分辨率从224 × 224提高到448 × 448，减少了图像下采样造成的信息损失。</p>
+<p>此外，为了缓解模型知识遗忘的问题，还引入了部分 In-house 数据集进行纯文本的自回归。</p>
+<p>具体而言，各个任务对应的模型输出格式如下所示：</p>
+<p><img alt="image-20251109142114505" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091421552.png"></p>
+<p><strong>Stage-3: SFT</strong></p>
+<p>这一阶段通过 instruction tuning 得到 Chat 模型，通过混合多模态和纯文本的对话数据，确保模型在对话能力方面的通用性，一共 35w 条训练样本。数据格式如下：</p>
+<p><img alt="image-20251109141847615" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091418840.png"></p>
+<h4 id="实验验证">实验验证</h4>
+<p><strong>Window Attention vs Global Attention for ViT</strong></p>
+<p>使用高分辨率的 ViT 会增加计算成本，一种可能的优化方案是大部分层使用 Window Attention，只在 224x224 的窗口内做 attention，少数层使用 Global Attention （整个 448x448 或 896x896）。</p>
+<p>实验表明，Window Attention 不会带来明显的速度优势，反而性能下降，因此 Qwen-VL 采用 Global Attention。</p>
+<h3 id="qwen2-vl">Qwen2-VL</h3>
+<p>Qwen2-VL 相比于第一代模型的改进之处还是蛮多的。主要有以下几个方面：</p>
+<ul>
+<li><strong>支持各种分辨率和宽高比</strong>  在第一代模型里面，不管输入大小多大，都会被 resize 到固定大小，这种“一刀切”的模式会限制模型在不同尺度上捕捉信息的能力</li>
+<li><strong>超长视频理解</strong>   上一代模型仅支持图像输入，而 Qwen2-VL 允许输入超过 20 分钟的视频</li>
+<li><strong>Agent能力</strong></li>
+<li><strong>多语种支持</strong>  除了英文和中文，还支持日语、越南语、欧洲语言等</li>
+</ul>
+<h4 id="模型设计-1">模型设计</h4>
+<p><img alt="image-20251109172304216" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091723432.png"></p>
+<p><strong>Naive Dynamic Resolution</strong></p>
+<p>与 Qwen-VL 不同，Qwen2-VL现在可以处理任意分辨率的图像，动态地将它们转换为可变数量的视觉 tokens。Qwen2-VL 修改了ViT，移除了原始的绝对位置编码，并引入了 2D-RoPE 来捕获图像的二维位置信息。在推理阶段，不同分辨率的图像被打包成单个序列，通过控制打包长度来限制GPU内存使用。此外，为了减少每张图像的视觉tokens，在 ViT 之后使用一个简单的MLP层将相邻的 2×2 tokens压缩成单个token，并在压缩后的视觉 tokens 的开头和结尾放置特殊的 <code>&lt;|vision_start|&gt;</code> 和 <code>&lt;|vision_end|&gt;</code>  tokens。因此，一张224×224 分辨率的图像，使用 patch_size=14 的 ViT 编码后，在进入LLM之前会被压缩到 66 个tokens。</p>
+<p>回顾 Qwen-VL 中的做法，通过 adapter 来压缩视觉 token 的长度，但是在这一代模型中则取消这一设计，选择更简单的方式直接将变长的视觉 token 拼接到骨干网络中，其背后的原因可能主要还是 Qwen2 能力提升 + Flash Attention 的效率提升。</p>
+<p><strong>Multimodal Rotary Position Embedding (M-RoPE)</strong></p>
+<p><img alt="image-20251109172800106" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091728162.png"></p>
+<p>M-RoPE 将 RoPE 分解为三个组件：时间(temporal)、高度(height)和宽度(width)。</p>
+<p>对于文本输入，这些组件使用相同的位置ID，使M-RoPE在功能上等同于1D-RoPE。在处理图像时，每个视觉 token 的 temporal ID 保持恒定，而高度和宽度组件则根据 token 在图像中的位置分配不同的ID。对于视频，它们被视为帧序列，temporal ID为每一帧递增，而高度和宽度组件遵循与图像相同的ID分配模式。这样做的一个好处在于，降低位置ID值，支持更长序列外推。</p>
+<ul>
+<li>传统方法的问题：</li>
+</ul>
+<pre tabindex="0"><code>训练时:
+文本(100 tokens): ID 0-99
+图像(1024 tokens): ID 100-1123
+总共: ID 0-1123 ✓ (在训练范围内)
+
+推理时处理更长内容:
+文本(100 tokens): ID 0-99
+图像1(1024 tokens): ID 100-1123
+图像2(1024 tokens): ID 1124-2147
+图像3(1024 tokens): ID 2148-3171
+...
+图像10: ID达到10000+ ✗ (超出训练范围，外推能力差)
+</code></pre><ul>
+<li>M-RoPE的优势：</li>
+</ul>
+<pre tabindex="0"><code>训练时:
+文本(100 tokens): temporal=0-99, h=0, w=0
+图像(1024 tokens): temporal=0, h=0-31, w=0-31
+最大ID值: 99 (temporal维度)
+
+推理时:
+文本(100 tokens): temporal=0-99
+图像1: temporal=0, h=0-31, w=0-31
+图像2: temporal=1, h=0-31, w=0-31  ← temporal只需+1
+图像3: temporal=2, h=0-31, w=0-31
+...
+图像100: temporal=99, h=0-31, w=0-31 ✓ (仍在训练范围内！)
+</code></pre><p><strong>Unified Image and Video Understanding</strong></p>
+<p>Qwen2-VL 在处理视频输入的时候使用 3D 卷积，能够处理 3D tubes 而不是 2D patches。为了保持一致性，每张图像被视作两个相同的帧，也就是 Time 纬度值是1。为了平衡长视频处理的计算需求与整体训练效率，我们动态调整每个视频帧的分辨率，将每个视频的总tokens数限制在16384。</p>
+<h4 id="模型训练-1">模型训练</h4>
+<p>模型训练和 Qwen-VL 一样，仍然是相同的三个阶段训练。</p>
+<p>在预训练阶段，专注训练 ViT，利用大量的 image-text 对、OCR 数据、交错的 image-text 文章等数据。这一阶段使用了大约 6000亿 tokens 的语料库，是 Qwen-VL 的 400 倍。</p>
+<p>在多任务训练阶段，使用大约 8000 亿 tokens，解冻所有参数进行训练。</p>
+<p>在SFT阶段，同样使用纯文本和多模态两种对话数据。值得注意的是，相比上一代模型，这里还使用了 Agent 数据（如UI操作、机器人控制、游戏和导航），即执行FUNCTION，观察 RESULT，进行推理和规划 RETURN。例如：</p>
+<p><img alt="image-20251109174223546" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511091742969.png"></p>
+<h3 id="qwen25-vl">Qwen2.5-VL</h3>
+<p><img alt="image-20251109202239405" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511092022556.png"></p>
+<h4 id="模型设计-2">模型设计</h4>
+<p><strong>ViT 优化</strong></p>
+<p>不同于过去两版模型，Qwen2.5-VL 从头训练了 ViT，包括 CLIP 预训练（对比学习）、vision-language 对齐和端到端 fine-tuning。模型设计上，引入了 LLM 中的一些设计，比如 RMSNorm，SwiGLU。除此以外，又重新引入 Window Attention (Qwen-VL 中被证明没什么用，看来还是和 ViT 本身的结构十分相关)。只有 4 层采用 global attention，其它都是采用 112x112 (8x8 patches) 的窗口注意力。 对于视频数据，两个连续帧被分组在一起，例如 <code>[(f1,f2), (f3,f4), (f5,f6), ...]</code> ，从而显著减少了 tokens 的数量。实际上，如果想要更细粒度的时间尺度，可以提高采样的 FPS。</p>
+<p><strong>绝对时间戳对齐的位置编码</strong></p>
+<p>在Qwen2-VL中，M-RoPE中的temporal位置ID与输入帧数相关联，这没有考虑内容变化的速度或视频内事件的绝对时间。为了解决这一局限，Qwen2.5-VL引入了一个关键改进：将M-RoPE的 temporal 组件与绝对时间对齐。</p>
+<h4 id="模型训练-2">模型训练</h4>
+<p><strong>预训练</strong></p>
+<p>预训练语料从 Qwen2-VL 的 1.2 万亿 token 增加到了 4 万亿，相对应地，在 2.5 版本的技术报告里，数据的构造篇幅占比也显著提升。</p>
+<p>预训练的策略和之前也稍有不同，除了第一阶段仅训练 ViT，第二阶段多任务全参数微调，在第三阶段为了增强模型对长序列、视频和基于 agent 数据的推理能力，纳入了相关的长序列数据。</p>
+<p><strong>后训练</strong></p>
+<p>后训练包含 SFT 和 DPO 两个阶段。在 SFT 阶段，使用大约 200w 条样本，包含纯文本数据 (50%) 和多模态数据 (50%)。</p>
+<p>论文中用了大量篇幅介绍数据的清洗。简单来说，数据的过滤包含规则过滤和模型过滤。例如，在 OCR 任务里面答案是否被截断、HTML 格式是否完整、单元格密度太低等等。模型过滤就是通过多个奖励模型，从多个维度 (例如 query 质量，答案质量，grounding 质量等) 来进行综合打分，根据得分阈值筛选样本。</p>
+<p>此外，论文中还提到使用拒绝采样来增强模型的 CoT 推理能力，这一步应该是在 SFT 之后进行优化的，然后再进行的 DPO。不过关于 DPO 的一些细节论文中并没有介绍太多，有可能这个的作用并不是很大吧。</p>
+<h2 id="internvl-25">InternVL 2.5</h2>
+<p>[TBD]</p>
+<h2 id="pixtral-12b">Pixtral 12B</h2>
+<p>[TBD]</p></section>
+
+  
+  
+  <div class="paginator">
+    
+    
+    <a class="next" href="http://localhost:1313/blog/flow-matching/"><span>Flow Matching</span>
+      <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3.77086 21.1546C11.0491 22.698 21.4339 21.7773 21.4339 16.3608V4.63375C21.4339 3.93962 21.3581 3.30535 21.1917 2.76787M3.77086 21.1546C1.9934 20.7777 0.973585 18.7264 1.08749 16.688C1.2668 13.479 1.15721 9.43135 1.00513 6.21507C0.87809 3.52811 3.12891 1.16316 5.51029 1.25008C9.76594 1.40542 15.377 1.20229 18.7912 1.00542C20.0864 0.930734 20.8406 1.63385 21.1917 2.76787M3.77086 21.1546C4.56586 21.4723 5.49168 21.7879 6.5 22.0658M21.1917 2.76787C23.1097 4.18217 23.13 12.4191 22.9004 16.3608C20.8478 24.0194 12.3061 23.6662 6.5 22.0658M21.1917 2.76787C21.7612 4.51192 22.7203 9.67216 22 16.3608C21.2797 23.0494 11.3665 22.9511 6.5 22.0658M12.055 9C12.711 9.61644 14.3679 10.997 15.9519 11.7966C16.0174 11.8297 16.0154 11.9753 15.9494 12.0063C14.945 12.4779 13.0706 13.9264 12.055 15M15.5556 11.9667C13.1345 12.0608 8 12 6 11" stroke="currentColor" stroke-linecap="round"/>
+      </svg>
+    </a>
+    
+  </div>
+  
+
+  
+
+
+  
+  
+</article>
+
+
+        </div><footer class="footer">
+  <p>&copy; 2025 <a href="http://localhost:1313/">Ray’Log</a>
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>
+    <a href="https://github.com/guangzhengli/hugo-theme-ladder" rel="noopener" target="_blank">Ladder</a>
+️  </p>
+</footer>
+
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.5376 22.7916C11.0152 22.7207 22.5795 21.1781 22.0978 10.4211C22.0536 9.43274 21.9303 8.53367 21.7387 7.71865M10.5376 22.7916C16.876 22.3728 20.0969 19.8899 21.5383 16.9142M10.5376 22.7916C9.7707 22.9055 8.97982 22.8964 8.19743 22.7725M21.7387 7.71865C21.4988 6.69828 21.1518 5.80967 20.7188 5.04257M21.7387 7.71865C22.6022 10.1105 23.0542 13.7848 21.5383 16.9142M20.7188 5.04257C17.1684 -1.24629 7.83127 0.632493 4.27577 5.04257C2.88063 6.77451 -0.0433281 11.1668 1.38159 16.6571C2.27481 20.0988 5.17269 22.2936 8.19743 22.7725M20.7188 5.04257C22.0697 6.9404 24.0299 11.3848 22.3541 15.4153M21.5383 16.9142C21.8737 16.4251 22.1428 15.9235 22.3541 15.4153M8.19743 22.7725C12.1971 23.4683 20.6281 22.971 22.3541 15.4153M14 10.945C13.3836 10.289 12.003 8.63215 11.2034 7.04814C11.1703 6.98257 11.0247 6.98456 10.9937 7.05061C10.5221 8.05496 9.07362 9.92941 8 10.945M11.0333 7.44444C10.9392 9.86549 11 15 12 17" stroke="currentColor" stroke-linecap="round"/>
+    </svg>
+</a>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'Copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'Copied';
+            setTimeout(() => {
+                copybutton.innerHTML = 'Copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+        codeblock.parentNode.appendChild(copybutton);
+    });
+</script></main>
+    </body>
+  
+  <script src="/main.min.6bb26b69159420159c74dc9e097b06a578ed2b68c701466a91a44a9632d851bd0af167a1b30012387b4c512b48ad9ad4d3394e04d77ae38d57e1920fe4ed34fe.js" integrity="sha512-a7JraRWUIBWcdNyeCXsGpXjtK2jHAUZqkaRKljLYUb0K8WehswASOHtMUStIrZrU0zlOBNd6441X4ZIP5O00/g==" crossorigin="anonymous" defer></script></html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Generation</title>
+    <meta charset="utf-8">
+    <meta name="description" content="Ladder@Flow-GRPO, Qwen Image, etc.">
+    <meta name="author" content="👋 Welcome to Ray’Log">
+    <link rel="canonical" href="http://localhost:1313/blog/image-generation/">
+        <meta name="google-site-verification" content="xxx">
+
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:1313//index.xml" title="Ray’Log">
+
+    
+  
+    
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-xxx"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-xxx');
+        }
+      </script>
+    
+  
+
+
+
+
+<script async defer data-website-id="d55626b6-2157-4767-b84b-5f71e5d62ac1" src="https://umami-lime-nu.vercel.app/hugo-ladder"></script>
+
+    <meta property="og:url" content="http://localhost:1313/blog/image-generation/">
+  <meta property="og:site_name" content="Ray’Log">
+  <meta property="og:title" content="Image Generation">
+  <meta property="og:description" content="Flow-GRPO, Qwen Image, etc.">
+  <meta property="og:locale" content="zh">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="blog">
+    <meta property="article:published_time" content="2025-11-10T14:38:41+08:00">
+    <meta property="article:modified_time" content="2025-11-10T14:38:41+08:00">
+
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Image Generation">
+  <meta name="twitter:description" content="Flow-GRPO, Qwen Image, etc.">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Blogs",
+      "item": "http://localhost:1313/blog/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Image Generation",
+      "item": "http://localhost:1313/blog/image-generation/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Image Generation",
+  "name": "Image Generation",
+  "description": "Flow-GRPO, Qwen Image, etc.\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "Flow-GRPO, Qwen Image, etc.\nFlow-GRPO 模型 Flow-GRPO 是第一个尝试将 GRPO 和 Flow Matching 结合的工作。它主要解决两方面的挑战：\n挑战一：RL 需要随机采样来进行探索，而 Flow Matching 模型是确定性的\n挑战二：Flow Matching 采样效率低，而 GRPO 要求高效采样\n我们首先来看第一个挑战。Flow Matching 的特点是基于 ODE 方程 $dx_t=v_t dt$，给定起点和模型，它的生成路径是唯一确定的。这会导致两个问题：\n首先，概率密度计算困难。GRPO 的损失计算函数中涉及到重要性采样，也就是计算：\n$$r_t^i(\\theta) = \\frac{p_\\theta(x_{t-1}^i|x_t^i, c)}{p_{\\theta_{\\text{old}}}(x_{t-1}^i|x_t^i, c)}$$ 对于确定性过程，概率要么是0（如果不在确定路径上），要么是1（如果在确定路径上）。这需要计算雅可比矩阵的行列式来估计概率密度：\n$$p(x_{t-1}|x_t) = \\delta(x_{t-1} - f(x_t)) \\cdot \\left|\\det\\frac{\\partial f}{\\partial x_t}\\right|$$ 其计算复杂度为 $O(d^3)$，成本极高。\n其次，由于每次生成图像的轨迹都是一样的（给定相同的初始噪声和提示词），这会导致：生成的一组图像高度相似，使得组内奖励的方差接近0，Group advantage 值无法有效计算。\n为了解决第一个挑战，Flow-GRPO 将 Flow Matching 要解决的 ODE 问题转换为了 SDE 问题，即：\n$$dx_t = \\underbrace{\\left(v_t(x_t) + \\frac{\\sigma_t^2}{2t}(x_t + (1-t)v_t(x_t))\\right)}_{\\text{漂移项}} dt + \\underbrace{\\sigma_t dw}_{\\text{扩散项}}$$ 其中：\n$dw$ 表示 Wiener 过程增量（布朗运动） $\\sigma_t$ 控制生成期间的随机性水平 论文中设定为 $\\sigma_t = a\\sqrt{\\frac{t}{1-t}}$ 为什么要这样设计 $\\sigma_t$？\n噪声调度 $\\sigma_t = a\\sqrt{\\frac{t}{1-t}}$ 的设计有以下考虑：\n时间依赖性：\n当 $t \\to 0$（接近纯噪声）：$\\sigma_t \\to 0$，扩散较小 当 $t \\to 1$（接近真实数据）：$\\sigma_t \\to \\infty$，但实际会被截断 在中间阶段：提供适度的随机性用于探索 与Rectified Flow匹配：\n这个形式确保转换后的SDE在所有时间步保持与原始ODE相同的边际分布 $p_t(x_t)$ 即：$p_t^{\\text{ODE}}(x_t) = p_t^{\\text{SDE}}(x_t), \\quad \\forall t \\in [0,1]$ rollout 伪代码：\n# ===== 1. 生成一组样本 ===== group_images = [] group_trajectories = [] group_rewards = [] for _ in range(group_size): # 1.1 从标准高斯分布采样初始噪声 x_T = torch.randn(1, 4, 64, 64) # 潜在空间 # 1.2 SDE采样轨迹（关键：引入随机性） trajectory = [x_T] x_t = x_T for step in range(num_steps): t = 1.0 - step / num_steps # 从1到0 dt = -1.0 / num_steps # 预测速度 v_t = model(x_t, t, prompt) # 计算噪声水平 sigma_t = sigma_a * torch.sqrt(t / (1 - t + 1e-8)) # SDE更新（关键公式） drift = v_t + (sigma_t**2 / (2*t + 1e-8)) * (x_t + (1-t)*v_t) diffusion = sigma_t * torch.sqrt(abs(dt)) * torch.randn_like(x_t) x_t = x_t + drift * dt + diffusion trajectory.append(x_t) # 1.3 VAE解码得到图像 x_0 = x_t image = vae.decode(x_0) # 1.4 计算奖励 reward = reward_fn(image, prompt) group_images.append(image) group_trajectories.append(trajectory) group_rewards.append(reward) 接下来我们看第二个挑战。假设我们训练的时候迭代 10,000 次，batch 大小设置为 8，group size 设置为 24，去噪步数设置为 40，那么总前向传播次数为：\n$$\\text{总次数} = 10,000 \\times 8 \\times 24 \\times 40 = 76,800,000 \\text{次}$$ 如果每次前向传播耗时 0.1 秒，总时间约为 2,133 小时（约89天），非常耗时！如果我们直接减少生成步长（例如从40步降到10步），在传统认知中会导致质量差、模糊、伪影等问题。\nFlow-GRPO 的关键发现是：RL训练不需要完美的样本质量，只需要正确的相对质量排序。因此，Flow-GRPO 采用了以下策略：\n训练阶段: 使用少量步数（10步） ↓ - 样本质量稍差，但生成速度快4倍 - 相对质量排序仍然正确 - 足以提供有效的学习信号（advantage计算） 推理阶段: 使用完整步数（40步） ↓ - 保证最终输出的高质量 - 用户看到的结果不受影响 实验 Flow-GRPO 主要在三个主要任务上进行评估：\n任务1: 组合图像生成 (Compositional Image Generation) └─ 评估数据集: GenEval 任务2: 视觉文本渲染 (Visual Text Rendering) └─ 评估数据集: 自定义文本渲染数据集 任务3: 人类偏好对齐 (Human Preference Alignment) └─ 评估数据集: DrawBench (使用PickScore评估) 在 GenEval 上主要评估模型组合能力，比如生成单个/多个指定物体，指定数量的物体，颜色，空间位置，属性绑定等等。在该数据集上使用规则奖励，比如 counting 任务，如果 prompt 是“生成3只猫”，模型生成了2只，则 $reward = 1-|3-2|/3=2/3$ 。对于Position/Color 任务使用分层奖励机制，例如下面这段示例代码：\ndef position_color_reward(image, prompt): \"\"\" 空间位置/颜色任务的奖励函数 采用分层奖励机制 \"\"\" # 解析提示词 requirements = parse_prompt(prompt) # 例: \"a red cat to the left of a blue dog\" # requirements = { # 'objects': ['cat', 'dog'], # 'count': {'cat': 1, 'dog': 1}, # 'position': 'cat left of dog', # 'colors': {'cat': 'red', 'dog': 'blue'} # } # 使用目标检测器 detections = object_detector(image) # 第1层: 检查物体计数 (基础奖励) count_correct = check_count(detections, requirements['count']) if not count_correct: # 如果物体数量都不对，只给部分奖励 return partial_reward # 例如 0.0 - 0.3 # 第2层: 检查空间位置或颜色 (完整奖励) if 'position' in requirements: position_correct = check_position(detections, requirements['position']) if position_correct: return 1.0 # 完全正确 else: return 0.5 # 物体对但位置错 if 'colors' in requirements: colors_correct = check_colors(image, detections, requirements['colors']) if colors_correct: return 1.0 # 完全正确 else: return 0.5 # 物体对但颜色错 return 0.5 # 物体对但其他属性不对 # 具体例子 prompt = \"a red cat to the left of a blue dog\" # 场景1: 完美 # 图像: 红猫在左，蓝狗在右 count_correct = True # 1只猫1只狗 ✅ position_correct = True # 猫在狗左边 ✅ colors_correct = True # 红猫蓝狗 ✅ reward = 1.0 # 场景2: 物体对，位置对，颜色错 # 图像: 蓝猫在左，红狗在右 count_correct = True # 1只猫1只狗 ✅ position_correct = True # 猫在狗左边 ✅ colors_correct = False # 颜色反了 ❌ reward = 0.7 # 部分正确 # 场景3: 物体对，位置错 # 图像: 红猫在右，蓝狗在左 count_correct = True # 1只猫1只狗 ✅ position_correct = False # 猫在狗右边 ❌ reward = 0.5 # 场景4: 物体数量就错了 # 图像: 2只猫，1只狗 count_correct = False # 物体数不对 ❌ reward = 0.2 # 很低的部分奖励 针对视觉文本渲染任务，通常是要求生成包含文字的图片，例如 “A sign that says ‘{text}’\"。针对这一任务，可以通过 OCR 提取生成图片中的文字，然后计算和 ground truth 的编辑距离，来构建奖励函数：$r = max(1 - N_e / N_{ref}, 0)$，其中 $N_e$ 表示最小编辑距离，$N_{ref}$ 表示目标文本的字符数。\nDrawBench 评估集是更加全面的评估模型 T2I 的通用能力，包含大约 200 个提示词。不同于另外两个评估集，在这一评估环节会使用 PickScore，一个预训练好的 reward model 来进行图像质量的打分，其内在逻辑会综合考虑图文匹配度以及视觉效果两方面因素。\nTakeaways\n移除 GRPO 中的 KL 约束会使得任务指标提升类似，但是生成图像质量显著下降 减少训练部署可以在维持 reward 几乎不变的前提下，显著提高训练速度，最优部署大约在10步训练，40步推理 group size 如果太小会导致 group advantage 方差大，估计不准确，建议使用 24 或更大 噪声系数 $\\alpha$ 参数不能过大也不能过小（似乎比较敏感） Qwen-Image 模型 Qwen-Image 首先使用 Qwen2.5 VL 这样一个 MLLM 作为条件编码器从文本里面提取特征，然后使用 VAE Encoder 将图像信息压缩成更为紧凑的表示，最后利用 MMDiT 作为骨干网络，在文本引导下建模噪声和图像隐变量之间的复杂联合分布。\n使用 Qwen2.5-VL 编码输入文本\n这样做是因为 MLLM 在预训练的时候，已经将 text 和 visual 信息对齐，使得它相比于纯文本的 LLM 而言，更适合进行 T2I 任务；此外，它还支持视觉输入，使得它在执行图像编辑任务的时候，可以提取更好的视觉语义潜入，从而更好遵循指令。\nVAE 的设计\n在 Qwen-Image 里面，希望构建一个对图像和视频都兼容的通用视觉表示。现有的框架，比如 WAN-2.1-VAE，在图像和视频之间存在性能权衡，导致图像维度的重建效果变差。所以在 Qwen-Image 里面采用了单编码器、双解码器的架构。也就是对于图像和视频输入，共享同一个 Encoder，但是独立使用 Decoder。为此，Qwen-Image 将 WAN-2.1-VAE 的 Encoder 固定，在真实世界文档（PDF,PPT,Poster）以及合成段落上单独微调 Decoder。覆盖字母语言（英文）和表意文字语言（中文）。\nMultiModal Diffusion Transformer (MMDiT)\nMMDiT 在 Stable Diffussion 3 中首次登场，Qwen-Image 在此基础上进行了一些改动，引入了一个新的位置编码 MSRoPE。\n如上图C所示，传统做法直接拼接会导致文本和图像某些行的位置编码重叠。Scaling RoPE 将图像位置编码移到中心区域，但是确定哪一图像行拼接文本token不容易，并且这一行里面图像token和文本token难以区分。MSRoPE 同样文本被视作 2D 张量，但是在两个维度上应用相同的位置ID（沿对角线概念化）。这种设计允许MSRoPE在图像侧保留2D RoPE的分辨率缩放能力，同时在文本侧保持与1D-RoPE的功能等价性，从而无需确定文本的最佳位置编码。\n数据 数据包含数十亿 image-text 对，包含四个主要领域：自然（55%）设计（27%）人物（13%）合成（5%）。\n数据合成\n数据合成有三种策略：\n为了训练模型识别和省哼罕见字符，采用真实文本+干净背景。例如： 输入: \"春眠不觉晓,处处闻啼鸟\"(从古诗语料库提取) 处理: 选择字体(如楷体)→ 动态计算布局 → 渲染到白色/浅色背景 输出: 一张只有文字的干净图像 质控: 如果某个字无法渲染(如生僻字缺字体)→ 丢弃整个段落 为了让模型理解文字和真实场景之间的关系，采用文字+物理介质+真实场景。例如： 步骤1: 在木板纹理上渲染\"OPEN\" 步骤2: 将这个\"木板\"合成到咖啡店门口的照片中 步骤3: 用Qwen-VL生成描述: \"咖啡店门口挂着写有'OPEN'的木牌, 背景是砖墙和玻璃门\" 为了让模型理解和生成复杂的多行、多区域文本布局，采用基于模板的程序化编辑。例如： 模板: PowerPoint幻灯片,包含标题、正文、页脚占位符 程序化替换: - 标题占位符 → \"2024年度总结\" - 正文占位符 → 从语料库提取的业务报告文本 - 页脚占位符 → \"第3页 | 机密\" 保持: 布局、对齐、字体大小、颜色方案 输出: 结构完整的商务PPT页面 训练 预训练\n预训练使用 Flow Matching 训练，原文中强调了训练的 infra，强调采用 Producer-Consumer 框架，在 Producer 中完成 Qwen2.5-VL 和 Encoder 的数据编码任务，Consumer 负责训练 MMDiT 模型。此外，使用 Magatron-LM 进行训练，为了实现张量并行，使用 Transformer-Engine 库构建 MMDiT 模型。\n值得关注的是，Qwen-Image 在预训练的时候采用了多阶段训练，逐步提高数据质量、图像分辨率和模型性能：\n提升分辨率\t逐步提升分辨率、多纵横比输入。从 256×256 像素的初始分辨率开始(具有各种纵横比，包括1:1、2:3、3:2、3:4、4:3、9:16、16:9、1:3和3:1)，然后增加到640×640像素,最终达到 1328×1328 像素。 集成文本渲染 逐步引入包含在自然背景上叠加渲染文本的图像 精炼数据质量\t训练早期使用大规模数据集，随着训练进行，逐渐采用越来越严格的数据过滤机制来选择高质量样本 平衡数据分布\t训练过程中逐步平衡数据集在领域和图像分辨率分布方面的平衡 使用合成数据\t对于超现实主义风格或者包含大量文本内容的高分辨率图像，使用合成数据来补充样本 后训练\n模型在经过SFT后，原文介绍了两种不同的 RL 策略：DPO和GRPO。具体而言，使用DPO进行相对大规模的RL，并保留GRPO用于小规模精细RL优化。\n在 DPO 阶段，给定相同提示词，使用不同的随机种子生成多张图像，然后要求人工选择最好和最差的图像。如果有 reference image，则选择生成图像中最差的作为 rejected 样本；否则选择最好和最差作为 chosen/rejected 样本 在 GRPO 阶段，使用 Flow-GRPO 框架进行训练； 多任务训练\n除了 T2I 任务以外，Qwen-Image 还扩展了 TI2T 任务，包括图像编辑、新视图生成等等。如上图所示，为了能够让模型区分多张图像，还引入了额外的帧维度来扩展 MSRoPE。\n实验 VAE 重建性能\n之前有提到，Qwen-Image 在 WAN-2.1-VAE 基础上微调解码器，针对图像模态单独训练了一个 VAE。其中 Encoder 19M Decoder 25M 参数，量化指标看重建图像的 PSNR 和 SSIM 指标，越高越好。\nPSNR 计算的是两张图像的像素级MSE，其单位是分贝，30-40dB质量良好，\u003e40dB质量优秀；SSIM 主要从亮度、对比度、结构三个维度比较图像，通常在[0,1]之间。\nT2I 性能\nT2I 和 Flow-GRPO 一样，主要看通用生成能力和文本渲染能力。\n图像编辑\n除了 GEdit / ImgEdit 这两个benchmark以外，还测试了模型处理3D任务的性能，包含新视图合成和深度估计。\n",
+  "wordCount" : "824",
+  "inLanguage": "zh",
+  "datePublished": "2025-11-10T14:38:41+08:00",
+  "dateModified": "2025-11-10T14:38:41+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "👋 Welcome to Ray’Log"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/blog/image-generation/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Ray’Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+    <link rel="icon" href="/images/avatar.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/avatar.png">
+
+<link rel="manifest" href="/images/avatar.png">
+    
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+
+    
+    
+    
+    <link rel="stylesheet" href="/css/main.css" media="screen">
+    
+
+
+    
+    <link rel="stylesheet" href="/scss/highlight/github-dark.min.min.66034289ee9a113219a2c4aae0a8bd2095ab255c832a42efcf5863f10814e7a1.css" />
+
+    
+    <script src="/js/highlight.min.min.c607d6febd16934a82eb61d3a896ed9d869f54373cc63ce95864ed5488fe3128.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script>(()=>{var t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,e=localStorage.getItem("theme");t&&e===null&&(localStorage.setItem("theme","dark"),document.documentElement.setAttribute("data-dark-mode","")),t&&e==="dark"&&document.documentElement.setAttribute("data-dark-mode",""),e==="dark"&&document.documentElement.setAttribute("data-dark-mode","")})()</script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.css" />
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdmirror.com/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+            });"></script>
+</head>
+
+
+<style>
+     
+    .katex {
+        font-size: 1em !important;   
+        font-weight: normal !important;   
+    }
+    
+     
+    .katex-display {
+        font-size: 1.1em !important;   
+    }
+    
+     
+    .katex .mord {
+        font-weight: normal !important;
+    }
+    
+    .katex .mbin {
+        font-weight: normal !important;
+    }
+    
+    .katex .mrel {
+        font-weight: normal !important;
+    }
+</style><body>
+      <main class="wrapper"><nav class="navigation">
+    <section class="container">
+        <a class="navigation-brand" href="/">
+            HOME
+        </a>
+        <input type="checkbox" id="menu-toggle" />
+        <label class="menu-button float-right" for="menu-toggle">
+            <span></span><span></span><span></span>
+        </label>
+        
+        <ul class="navigation-list" id="navigation-list">
+            
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/blog">文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/tags">分类</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/archives">历史文章</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="/guestbook">留言板</a>
+            </li>
+            
+            <li class="navigation-item navigation-menu">
+                <a class="navigation-link" href="https://umami-lime-nu.vercel.app/dashboard">网站统计</a>
+            </li>
+            
+            
+
+            <li class="navigation-item menu-separator">
+                <span>|</span>
+            </li>
+
+            
+            
+            <li class="navigation-item navigation-social">
+                <a class="navigation-link" href="https://github.com/zruiii"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
+            </li>
+            
+            
+
+            <li class="navigation-item navigation-dark">
+                <button id="mode" type="button" aria-label="toggle user light or dark theme">
+                    <span class="toggle-dark"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>
+                    <span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+                </button>
+            </li>
+
+            
+            
+            
+            
+            
+            
+            
+            <li class="navigation-item navigation-language">
+                <a href="http://localhost:1313/en/">EN</a>
+            </li>
+            
+            
+            
+            
+        </ul>
+        
+    </section>
+</nav>
+<div id="content">
+<article class="blog-single">
+  <header class="blog-title">
+    <h1>Image Generation</h1>
+  </header>
+
+  <p>
+  <small>
+    2025年11月10日&nbsp;· 824 字&nbsp;· 4 分钟</small>
+
+  
+<p>
+
+  <div class="blog-toc">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#flow-grpo">Flow-GRPO</a>
+      <ul>
+        <li><a href="#模型">模型</a></li>
+        <li><a href="#实验">实验</a></li>
+      </ul>
+    </li>
+    <li><a href="#qwen-image">Qwen-Image</a>
+      <ul>
+        <li><a href="#模型-1">模型</a></li>
+        <li><a href="#数据">数据</a></li>
+        <li><a href="#训练">训练</a></li>
+        <li><a href="#实验-1">实验</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
+
+  <section class="blog-content"><p>Flow-GRPO, Qwen Image, etc.</p>
+<h2 id="flow-grpo">Flow-GRPO</h2>
+<h3 id="模型">模型</h3>
+<p>Flow-GRPO 是第一个尝试将 GRPO 和 Flow Matching 结合的工作。它主要解决两方面的挑战：</p>
+<p><strong>挑战一：RL 需要随机采样来进行探索，而 Flow Matching 模型是确定性的</strong></p>
+<p><strong>挑战二：Flow Matching 采样效率低，而 GRPO 要求高效采样</strong></p>
+<p>我们首先来看第一个挑战。Flow Matching 的特点是基于 ODE 方程 $dx_t=v_t dt$，给定起点和模型，它的生成路径是唯一确定的。这会导致两个问题：</p>
+<p>首先，概率密度计算困难。GRPO 的损失计算函数中涉及到重要性采样，也就是计算：</p>
+$$r_t^i(\theta) = \frac{p_\theta(x_{t-1}^i|x_t^i, c)}{p_{\theta_{\text{old}}}(x_{t-1}^i|x_t^i, c)}$$
+<p>对于确定性过程，概率要么是0（如果不在确定路径上），要么是1（如果在确定路径上）。这需要计算<strong>雅可比矩阵的行列式</strong>来估计概率密度：</p>
+$$p(x_{t-1}|x_t) = \delta(x_{t-1} - f(x_t)) \cdot \left|\det\frac{\partial f}{\partial x_t}\right|$$
+<p>其计算复杂度为 $O(d^3)$，成本极高。</p>
+<p>其次，由于每次生成图像的轨迹都是一样的（给定相同的初始噪声和提示词），这会导致：生成的一组图像高度相似，使得组内奖励的方差接近0，Group advantage 值无法有效计算。</p>
+<p>为了解决第一个挑战，Flow-GRPO 将 Flow Matching 要解决的 ODE 问题转换为了 SDE 问题，即：</p>
+$$dx_t = \underbrace{\left(v_t(x_t) + \frac{\sigma_t^2}{2t}(x_t + (1-t)v_t(x_t))\right)}_{\text{漂移项}} dt + \underbrace{\sigma_t dw}_{\text{扩散项}}$$
+<p>其中：</p>
+<ul>
+<li>$dw$ 表示 Wiener 过程增量（布朗运动）</li>
+<li>$\sigma_t$ 控制生成期间的随机性水平</li>
+<li>论文中设定为 $\sigma_t = a\sqrt{\frac{t}{1-t}}$</li>
+</ul>
+<p><strong>为什么要这样设计 $\sigma_t$？</strong></p>
+<p>噪声调度 $\sigma_t = a\sqrt{\frac{t}{1-t}}$ 的设计有以下考虑：</p>
+<ol>
+<li>
+<p><strong>时间依赖性</strong>：</p>
+<ul>
+<li>当 $t \to 0$（接近纯噪声）：$\sigma_t \to 0$，扩散较小</li>
+<li>当 $t \to 1$（接近真实数据）：$\sigma_t \to \infty$，但实际会被截断</li>
+<li>在中间阶段：提供适度的随机性用于探索</li>
+</ul>
+</li>
+<li>
+<p><strong>与Rectified Flow匹配</strong>：</p>
+<ul>
+<li>这个形式确保转换后的SDE在所有时间步保持与原始ODE相同的<strong>边际分布</strong> $p_t(x_t)$</li>
+<li>即：$p_t^{\text{ODE}}(x_t) = p_t^{\text{SDE}}(x_t), \quad \forall t \in [0,1]$</li>
+</ul>
+</li>
+</ol>
+<p>rollout 伪代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># ===== 1. 生成一组样本 =====</span>
+</span></span><span style="display:flex;"><span>group_images <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>group_trajectories <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>group_rewards <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> _ <span style="color:#f92672">in</span> range(group_size):
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e"># 1.1 从标准高斯分布采样初始噪声</span>
+</span></span><span style="display:flex;"><span>  x_T <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>randn(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">64</span>, <span style="color:#ae81ff">64</span>)  <span style="color:#75715e"># 潜在空间</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e"># 1.2 SDE采样轨迹（关键：引入随机性）</span>
+</span></span><span style="display:flex;"><span>  trajectory <span style="color:#f92672">=</span> [x_T]
+</span></span><span style="display:flex;"><span>  x_t <span style="color:#f92672">=</span> x_T
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> step <span style="color:#f92672">in</span> range(num_steps):
+</span></span><span style="display:flex;"><span>    t <span style="color:#f92672">=</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">-</span> step <span style="color:#f92672">/</span> num_steps  <span style="color:#75715e"># 从1到0</span>
+</span></span><span style="display:flex;"><span>    dt <span style="color:#f92672">=</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> num_steps
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 预测速度</span>
+</span></span><span style="display:flex;"><span>    v_t <span style="color:#f92672">=</span> model(x_t, t, prompt)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 计算噪声水平</span>
+</span></span><span style="display:flex;"><span>    sigma_t <span style="color:#f92672">=</span> sigma_a <span style="color:#f92672">*</span> torch<span style="color:#f92672">.</span>sqrt(t <span style="color:#f92672">/</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span> t <span style="color:#f92672">+</span> <span style="color:#ae81ff">1e-8</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># SDE更新（关键公式）</span>
+</span></span><span style="display:flex;"><span>    drift <span style="color:#f92672">=</span> v_t <span style="color:#f92672">+</span> (sigma_t<span style="color:#f92672">**</span><span style="color:#ae81ff">2</span> <span style="color:#f92672">/</span> (<span style="color:#ae81ff">2</span><span style="color:#f92672">*</span>t <span style="color:#f92672">+</span> <span style="color:#ae81ff">1e-8</span>)) <span style="color:#f92672">*</span> (x_t <span style="color:#f92672">+</span> (<span style="color:#ae81ff">1</span><span style="color:#f92672">-</span>t)<span style="color:#f92672">*</span>v_t)
+</span></span><span style="display:flex;"><span>    diffusion <span style="color:#f92672">=</span> sigma_t <span style="color:#f92672">*</span> torch<span style="color:#f92672">.</span>sqrt(abs(dt)) <span style="color:#f92672">*</span> torch<span style="color:#f92672">.</span>randn_like(x_t)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    x_t <span style="color:#f92672">=</span> x_t <span style="color:#f92672">+</span> drift <span style="color:#f92672">*</span> dt <span style="color:#f92672">+</span> diffusion
+</span></span><span style="display:flex;"><span>    trajectory<span style="color:#f92672">.</span>append(x_t)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 1.3 VAE解码得到图像</span>
+</span></span><span style="display:flex;"><span>    x_0 <span style="color:#f92672">=</span> x_t
+</span></span><span style="display:flex;"><span>    image <span style="color:#f92672">=</span> vae<span style="color:#f92672">.</span>decode(x_0)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 1.4 计算奖励</span>
+</span></span><span style="display:flex;"><span>    reward <span style="color:#f92672">=</span> reward_fn(image, prompt)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    group_images<span style="color:#f92672">.</span>append(image)
+</span></span><span style="display:flex;"><span>    group_trajectories<span style="color:#f92672">.</span>append(trajectory)
+</span></span><span style="display:flex;"><span>    group_rewards<span style="color:#f92672">.</span>append(reward)
+</span></span></code></pre></div><p>接下来我们看第二个挑战。假设我们训练的时候迭代 10,000 次，batch 大小设置为 8，group size 设置为 24，去噪步数设置为 40，那么总前向传播次数为：</p>
+$$\text{总次数} = 10,000 \times 8 \times 24 \times 40 = 76,800,000 \text{次}$$
+<p>如果每次前向传播耗时 0.1 秒，总时间约为 <strong>2,133 小时（约89天）</strong>，非常耗时！如果我们直接减少生成步长（例如从40步降到10步），在传统认知中会导致质量差、模糊、伪影等问题。</p>
+<p>Flow-GRPO 的关键发现是：<strong>RL训练不需要完美的样本质量，只需要正确的相对质量排序</strong>。因此，Flow-GRPO 采用了以下策略：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>训练阶段: 使用少量步数<span style="color:#960050;background-color:#1e0010">（</span><span style="color:#ae81ff">10</span>步<span style="color:#960050;background-color:#1e0010">）</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#960050;background-color:#1e0010">↓</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">-</span> 样本质量稍差<span style="color:#960050;background-color:#1e0010">，</span>但生成速度快4倍
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">-</span> 相对质量排序仍然正确
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">-</span> 足以提供有效的学习信号<span style="color:#960050;background-color:#1e0010">（</span>advantage计算<span style="color:#960050;background-color:#1e0010">）</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>推理阶段: 使用完整步数<span style="color:#960050;background-color:#1e0010">（</span><span style="color:#ae81ff">40</span>步<span style="color:#960050;background-color:#1e0010">）</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#960050;background-color:#1e0010">↓</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">-</span> 保证最终输出的高质量
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">-</span> 用户看到的结果不受影响
+</span></span></code></pre></div><h3 id="实验">实验</h3>
+<p>Flow-GRPO 主要在三个主要任务上进行评估：</p>
+<pre tabindex="0"><code>任务1: 组合图像生成 (Compositional Image Generation)
+       └─ 评估数据集: GenEval
+
+任务2: 视觉文本渲染 (Visual Text Rendering)
+       └─ 评估数据集: 自定义文本渲染数据集
+
+任务3: 人类偏好对齐 (Human Preference Alignment)
+       └─ 评估数据集: DrawBench (使用PickScore评估)
+</code></pre><p>在 GenEval 上主要评估模型组合能力，比如生成单个/多个指定物体，指定数量的物体，颜色，空间位置，属性绑定等等。在该数据集上使用规则奖励，比如 counting 任务，如果 prompt 是“生成3只猫”，模型生成了2只，则 $reward = 1-|3-2|/3=2/3$ 。对于Position/Color 任务使用分层奖励机制，例如下面这段示例代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">position_color_reward</span>(image, prompt):
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    空间位置/颜色任务的奖励函数
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    采用分层奖励机制
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    &#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 解析提示词</span>
+</span></span><span style="display:flex;"><span>    requirements <span style="color:#f92672">=</span> parse_prompt(prompt)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 例: &#34;a red cat to the left of a blue dog&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># requirements = {</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">#     &#39;objects&#39;: [&#39;cat&#39;, &#39;dog&#39;],</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">#     &#39;count&#39;: {&#39;cat&#39;: 1, &#39;dog&#39;: 1},</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">#     &#39;position&#39;: &#39;cat left of dog&#39;,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">#     &#39;colors&#39;: {&#39;cat&#39;: &#39;red&#39;, &#39;dog&#39;: &#39;blue&#39;}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># }</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 使用目标检测器</span>
+</span></span><span style="display:flex;"><span>    detections <span style="color:#f92672">=</span> object_detector(image)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 第1层: 检查物体计数 (基础奖励)</span>
+</span></span><span style="display:flex;"><span>    count_correct <span style="color:#f92672">=</span> check_count(detections, requirements[<span style="color:#e6db74">&#39;count&#39;</span>])
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> count_correct:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 如果物体数量都不对，只给部分奖励</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> partial_reward  <span style="color:#75715e"># 例如 0.0 - 0.3</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># 第2层: 检查空间位置或颜色 (完整奖励)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;position&#39;</span> <span style="color:#f92672">in</span> requirements:
+</span></span><span style="display:flex;"><span>        position_correct <span style="color:#f92672">=</span> check_position(detections, requirements[<span style="color:#e6db74">&#39;position&#39;</span>])
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> position_correct:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1.0</span>  <span style="color:#75715e"># 完全正确</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0.5</span>  <span style="color:#75715e"># 物体对但位置错</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;colors&#39;</span> <span style="color:#f92672">in</span> requirements:
+</span></span><span style="display:flex;"><span>        colors_correct <span style="color:#f92672">=</span> check_colors(image, detections, requirements[<span style="color:#e6db74">&#39;colors&#39;</span>])
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> colors_correct:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1.0</span>  <span style="color:#75715e"># 完全正确</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0.5</span>  <span style="color:#75715e"># 物体对但颜色错</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0.5</span>  <span style="color:#75715e"># 物体对但其他属性不对</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 具体例子</span>
+</span></span><span style="display:flex;"><span>prompt <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;a red cat to the left of a blue dog&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 场景1: 完美</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 图像: 红猫在左，蓝狗在右</span>
+</span></span><span style="display:flex;"><span>count_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>     <span style="color:#75715e"># 1只猫1只狗 ✅</span>
+</span></span><span style="display:flex;"><span>position_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>  <span style="color:#75715e"># 猫在狗左边 ✅  </span>
+</span></span><span style="display:flex;"><span>colors_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>    <span style="color:#75715e"># 红猫蓝狗 ✅</span>
+</span></span><span style="display:flex;"><span>reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">1.0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 场景2: 物体对，位置对，颜色错</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 图像: 蓝猫在左，红狗在右</span>
+</span></span><span style="display:flex;"><span>count_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>     <span style="color:#75715e"># 1只猫1只狗 ✅</span>
+</span></span><span style="display:flex;"><span>position_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>  <span style="color:#75715e"># 猫在狗左边 ✅</span>
+</span></span><span style="display:flex;"><span>colors_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">False</span>   <span style="color:#75715e"># 颜色反了 ❌</span>
+</span></span><span style="display:flex;"><span>reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.7</span>  <span style="color:#75715e"># 部分正确</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 场景3: 物体对，位置错</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 图像: 红猫在右，蓝狗在左</span>
+</span></span><span style="display:flex;"><span>count_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">True</span>     <span style="color:#75715e"># 1只猫1只狗 ✅</span>
+</span></span><span style="display:flex;"><span>position_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">False</span> <span style="color:#75715e"># 猫在狗右边 ❌</span>
+</span></span><span style="display:flex;"><span>reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.5</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 场景4: 物体数量就错了</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 图像: 2只猫，1只狗</span>
+</span></span><span style="display:flex;"><span>count_correct <span style="color:#f92672">=</span> <span style="color:#66d9ef">False</span>    <span style="color:#75715e"># 物体数不对 ❌</span>
+</span></span><span style="display:flex;"><span>reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.2</span>  <span style="color:#75715e"># 很低的部分奖励</span>
+</span></span></code></pre></div><p>针对视觉文本渲染任务，通常是要求生成包含文字的图片，例如 &ldquo;A sign that says &lsquo;{text}&rsquo;&quot;。针对这一任务，可以通过 OCR 提取生成图片中的文字，然后计算和 ground truth 的编辑距离，来构建奖励函数：$r = max(1 - N_e / N_{ref}, 0)$，其中 $N_e$ 表示最小编辑距离，$N_{ref}$ 表示目标文本的字符数。</p>
+<p>DrawBench 评估集是更加全面的评估模型 T2I 的通用能力，包含大约 200 个提示词。不同于另外两个评估集，在这一评估环节会使用 PickScore，一个预训练好的 reward model 来进行图像质量的打分，其内在逻辑会综合考虑图文匹配度以及视觉效果两方面因素。</p>
+<blockquote>
+<p><strong>Takeaways</strong></p>
+<ul>
+<li>移除 GRPO 中的 KL 约束会使得任务指标提升类似，但是生成图像质量显著下降</li>
+<li>减少训练部署可以在维持 reward 几乎不变的前提下，显著提高训练速度，最优部署大约在10步训练，40步推理</li>
+<li>group size 如果太小会导致 group advantage 方差大，估计不准确，建议使用 24 或更大</li>
+<li>噪声系数 $\alpha$ 参数不能过大也不能过小（似乎比较敏感）</li>
+</ul>
+</blockquote>
+<h2 id="qwen-image">Qwen-Image</h2>
+<h3 id="模型-1">模型</h3>
+<p><img alt="image-20251111140717589" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511111407709.png"></p>
+<p>Qwen-Image 首先使用 Qwen2.5 VL 这样一个 MLLM 作为条件编码器从文本里面提取特征，然后使用 VAE Encoder 将图像信息压缩成更为紧凑的表示，最后利用 MMDiT 作为骨干网络，在文本引导下建模噪声和图像隐变量之间的复杂联合分布。</p>
+<p><strong>使用 Qwen2.5-VL 编码输入文本</strong></p>
+<p>这样做是因为 MLLM 在预训练的时候，已经将 text 和 visual 信息对齐，使得它相比于纯文本的 LLM 而言，更适合进行 T2I 任务；此外，它还支持视觉输入，使得它在执行图像编辑任务的时候，可以提取更好的视觉语义潜入，从而更好遵循指令。</p>
+<p><strong>VAE 的设计</strong></p>
+<p>在 Qwen-Image 里面，希望构建一个对图像和视频都兼容的通用视觉表示。现有的框架，比如 WAN-2.1-VAE，在图像和视频之间存在性能权衡，导致图像维度的重建效果变差。所以在 Qwen-Image 里面采用了单编码器、双解码器的架构。也就是对于图像和视频输入，共享同一个 Encoder，但是独立使用 Decoder。为此，Qwen-Image 将 WAN-2.1-VAE 的 Encoder 固定，在真实世界文档（PDF,PPT,Poster）以及合成段落上单独微调 Decoder。覆盖字母语言（英文）和表意文字语言（中文）。</p>
+<p><strong>MultiModal Diffusion Transformer (MMDiT)</strong></p>
+<p><img alt="image-20251111152242496" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511111522750.png"></p>
+<p>MMDiT 在 Stable Diffussion 3 中首次登场，Qwen-Image 在此基础上进行了一些改动，引入了一个新的位置编码 MSRoPE。</p>
+<p>如上图C所示，传统做法直接拼接会导致文本和图像某些行的位置编码重叠。Scaling RoPE 将图像位置编码移到中心区域，但是确定哪一图像行拼接文本token不容易，并且这一行里面图像token和文本token难以区分。MSRoPE 同样文本被视作 2D 张量，但是在两个维度上应用相同的位置ID（沿对角线概念化）。这种设计允许MSRoPE在图像侧保留2D RoPE的分辨率缩放能力，同时在文本侧保持与1D-RoPE的功能等价性，从而无需确定文本的最佳位置编码。</p>
+<h3 id="数据">数据</h3>
+<p>数据包含数十亿 image-text 对，包含四个主要领域：自然（55%）设计（27%）人物（13%）合成（5%）。</p>
+<p><strong>数据合成</strong></p>
+<p>数据合成有三种策略：</p>
+<ul>
+<li>为了训练模型识别和省哼罕见字符，采用真实文本+干净背景。例如：</li>
+</ul>
+<pre tabindex="0"><code>输入: &#34;春眠不觉晓,处处闻啼鸟&#34;(从古诗语料库提取)
+处理: 选择字体(如楷体)→ 动态计算布局 → 渲染到白色/浅色背景
+输出: 一张只有文字的干净图像
+质控: 如果某个字无法渲染(如生僻字缺字体)→ 丢弃整个段落
+</code></pre><ul>
+<li>为了让模型理解文字和真实场景之间的关系，采用文字+物理介质+真实场景。例如：</li>
+</ul>
+<pre tabindex="0"><code>步骤1: 在木板纹理上渲染&#34;OPEN&#34;
+步骤2: 将这个&#34;木板&#34;合成到咖啡店门口的照片中
+步骤3: 用Qwen-VL生成描述: &#34;咖啡店门口挂着写有&#39;OPEN&#39;的木牌, 背景是砖墙和玻璃门&#34;
+</code></pre><ul>
+<li>为了让模型理解和生成复杂的多行、多区域文本布局，采用基于模板的程序化编辑。例如：</li>
+</ul>
+<pre tabindex="0"><code>模板: PowerPoint幻灯片,包含标题、正文、页脚占位符
+
+程序化替换:
+- 标题占位符 → &#34;2024年度总结&#34; 
+- 正文占位符 → 从语料库提取的业务报告文本
+- 页脚占位符 → &#34;第3页 | 机密&#34;
+
+保持: 布局、对齐、字体大小、颜色方案
+
+输出: 结构完整的商务PPT页面
+</code></pre><h3 id="训练">训练</h3>
+<p><strong>预训练</strong></p>
+<p>预训练使用 Flow Matching 训练，原文中强调了训练的 infra，强调采用 Producer-Consumer 框架，在 Producer 中完成 Qwen2.5-VL 和 Encoder 的数据编码任务，Consumer 负责训练 MMDiT 模型。此外，使用 Magatron-LM 进行训练，为了实现张量并行，使用 Transformer-Engine 库构建 MMDiT 模型。</p>
+<p>值得关注的是，Qwen-Image 在预训练的时候采用了多阶段训练，逐步提高数据质量、图像分辨率和模型性能：</p>
+<ul>
+<li><strong>提升分辨率</strong>	逐步提升分辨率、多纵横比输入。从 256×256 像素的初始分辨率开始(具有各种纵横比，包括1:1、2:3、3:2、3:4、4:3、9:16、16:9、1:3和3:1)，然后增加到640×640像素,最终达到 1328×1328 像素。</li>
+<li><strong>集成文本渲染</strong> 	逐步引入包含在自然背景上叠加渲染文本的图像</li>
+<li><strong>精炼数据质量</strong>	训练早期使用大规模数据集，随着训练进行，逐渐采用越来越严格的数据过滤机制来选择高质量样本</li>
+<li><strong>平衡数据分布</strong>	训练过程中逐步平衡数据集在领域和图像分辨率分布方面的平衡</li>
+<li><strong>使用合成数据</strong>	对于超现实主义风格或者包含大量文本内容的高分辨率图像，使用合成数据来补充样本</li>
+</ul>
+<p><strong>后训练</strong></p>
+<p>模型在经过SFT后，原文介绍了两种不同的 RL 策略：DPO和GRPO。具体而言，使用DPO进行相对大规模的RL，并保留GRPO用于小规模精细RL优化。</p>
+<ul>
+<li>在 DPO 阶段，给定相同提示词，使用不同的随机种子生成多张图像，然后要求人工选择最好和最差的图像。如果有 reference image，则选择生成图像中最差的作为 rejected 样本；否则选择最好和最差作为 chosen/rejected 样本</li>
+<li>在 GRPO 阶段，使用 Flow-GRPO 框架进行训练；</li>
+</ul>
+<p><strong>多任务训练</strong></p>
+<p><img alt="image-20251111162247207" src="https://raw.githubusercontent.com/zruiii/PicCloud/main/Typora-img/202511111622468.png"></p>
+<p>除了 T2I 任务以外，Qwen-Image 还扩展了 TI2T 任务，包括图像编辑、新视图生成等等。如上图所示，为了能够让模型区分多张图像，还引入了额外的帧维度来扩展 MSRoPE。</p>
+<h3 id="实验-1">实验</h3>
+<p><strong>VAE 重建性能</strong></p>
+<p>之前有提到，Qwen-Image 在 WAN-2.1-VAE 基础上微调解码器，针对图像模态单独训练了一个 VAE。其中 Encoder 19M Decoder 25M 参数，量化指标看重建图像的 PSNR 和 SSIM 指标，越高越好。</p>
+<blockquote>
+<p>PSNR 计算的是两张图像的像素级MSE，其单位是分贝，30-40dB质量良好，&gt;40dB质量优秀；SSIM 主要从亮度、对比度、结构三个维度比较图像，通常在[0,1]之间。</p>
+</blockquote>
+<p><strong>T2I 性能</strong></p>
+<p>T2I 和 Flow-GRPO 一样，主要看通用生成能力和文本渲染能力。</p>
+<p><strong>图像编辑</strong></p>
+<p>除了 GEdit / ImgEdit 这两个benchmark以外，还测试了模型处理3D任务的性能，包含新视图合成和深度估计。</p></section>
+
+  
+  
+  <div class="paginator">
+    
+    
+    <a class="next" href="http://localhost:1313/blog/mllm/"><span>MLLM</span>
+      <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3.77086 21.1546C11.0491 22.698 21.4339 21.7773 21.4339 16.3608V4.63375C21.4339 3.93962 21.3581 3.30535 21.1917 2.76787M3.77086 21.1546C1.9934 20.7777 0.973585 18.7264 1.08749 16.688C1.2668 13.479 1.15721 9.43135 1.00513 6.21507C0.87809 3.52811 3.12891 1.16316 5.51029 1.25008C9.76594 1.40542 15.377 1.20229 18.7912 1.00542C20.0864 0.930734 20.8406 1.63385 21.1917 2.76787M3.77086 21.1546C4.56586 21.4723 5.49168 21.7879 6.5 22.0658M21.1917 2.76787C23.1097 4.18217 23.13 12.4191 22.9004 16.3608C20.8478 24.0194 12.3061 23.6662 6.5 22.0658M21.1917 2.76787C21.7612 4.51192 22.7203 9.67216 22 16.3608C21.2797 23.0494 11.3665 22.9511 6.5 22.0658M12.055 9C12.711 9.61644 14.3679 10.997 15.9519 11.7966C16.0174 11.8297 16.0154 11.9753 15.9494 12.0063C14.945 12.4779 13.0706 13.9264 12.055 15M15.5556 11.9667C13.1345 12.0608 8 12 6 11" stroke="currentColor" stroke-linecap="round"/>
+      </svg>
+    </a>
+    
+  </div>
+  
+
+  
+
+
+  
+  
+</article>
+
+
+        </div><footer class="footer">
+  <p>&copy; 2025 <a href="http://localhost:1313/">Ray’Log</a>
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>
+    <a href="https://github.com/guangzhengli/hugo-theme-ladder" rel="noopener" target="_blank">Ladder</a>
+️  </p>
+</footer>
+
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.5376 22.7916C11.0152 22.7207 22.5795 21.1781 22.0978 10.4211C22.0536 9.43274 21.9303 8.53367 21.7387 7.71865M10.5376 22.7916C16.876 22.3728 20.0969 19.8899 21.5383 16.9142M10.5376 22.7916C9.7707 22.9055 8.97982 22.8964 8.19743 22.7725M21.7387 7.71865C21.4988 6.69828 21.1518 5.80967 20.7188 5.04257M21.7387 7.71865C22.6022 10.1105 23.0542 13.7848 21.5383 16.9142M20.7188 5.04257C17.1684 -1.24629 7.83127 0.632493 4.27577 5.04257C2.88063 6.77451 -0.0433281 11.1668 1.38159 16.6571C2.27481 20.0988 5.17269 22.2936 8.19743 22.7725M20.7188 5.04257C22.0697 6.9404 24.0299 11.3848 22.3541 15.4153M21.5383 16.9142C21.8737 16.4251 22.1428 15.9235 22.3541 15.4153M8.19743 22.7725C12.1971 23.4683 20.6281 22.971 22.3541 15.4153M14 10.945C13.3836 10.289 12.003 8.63215 11.2034 7.04814C11.1703 6.98257 11.0247 6.98456 10.9937 7.05061C10.5221 8.05496 9.07362 9.92941 8 10.945M11.0333 7.44444C10.9392 9.86549 11 15 12 17" stroke="currentColor" stroke-linecap="round"/>
+    </svg>
+</a>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'Copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'Copied';
+            setTimeout(() => {
+                copybutton.innerHTML = 'Copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+        codeblock.parentNode.appendChild(copybutton);
+    });
+</script></main>
+    </body>
+  
+  <script src="/main.min.6bb26b69159420159c74dc9e097b06a578ed2b68c701466a91a44a9632d851bd0af167a1b30012387b4c512b48ad9ad4d3394e04d77ae38d57e1920fe4ed34fe.js" integrity="sha512-a7JraRWUIBWcdNyeCXsGpXjtK2jHAUZqkaRKljLYUb0K8WehswASOHtMUStIrZrU0zlOBNd6441X4ZIP5O00/g==" crossorigin="anonymous" defer></script></html>

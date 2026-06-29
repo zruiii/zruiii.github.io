@@ -3,17 +3,16 @@ title: Ray’Log
 theme: hugo-theme-ladder
 license: MIT
 licenselink: 'https://github.com/guangzhengli/hugo-theme-ladder/blob/master/LICENSE'
-description: 'A fast, clean Hugo theme'
+description: "Ray 的个人博客，分享 AI 算法学习心得与工程实践"
 homepage: 'https://zruiii.github.io'
 defaultContentLanguage: 'zh'
-googleAnalytics: G-xxx
 paginate: 10
 params:
   brand: HOME
   avatarURL: /images/avatar.png
   author: 👋 Welcome to Ray’Log
-  # authorDescription: A clean, fast hugo theme focused on Reading
-  info: A Self-introduction
+  authorDescription: "An AI engineer sharing notes on AI algorithms and engineering practice."
+  info: "Hi, I'm Ray — an AI algorithm engineer who loves building products. Here I share my notes on AI/ML and my journey building AI-native apps."
   favicon: /images/avatar.png
   options:
     showDarkMode: true
@@ -23,14 +22,14 @@ params:
   #darkModeTheme: icy-dark-mode
   comments:
     giscus:
-      enable: false
-      repo: username/repo
-      repo_id: xxx
+      enable: true
+      repo: zruiii/zruiii.github.io
+      repo_id: R_kgDOMcIcvQ
       category: Announcements
-      category_id: xxx
+      category_id: DIC_kwDOMcIcvc4DAFOn
       mapping: pathname
       position: top
-      lang: en # pick a language from https://github.com/giscus/giscus/tree/main/locales
+      lang: zh-CN # pick a language from https://github.com/giscus/giscus/tree/main/locales
     utteranc:
       enable: false
       repo: username/xxx
@@ -40,8 +39,8 @@ params:
       SiteVerificationTag: xxx
     umami:
       enable: true
-      website_id: d55626b6-2157-4767-b84b-5f71e5d62ac1
-      url: https://umami-lime-nu.vercel.app/hugo-ladder
+      website_id: f5034a22-a895-444b-9be2-5a9cc40472ac
+      url: https://cloud.umami.is/script.js
   guestbook:
     title: Guestbook
     description: Leave a comment below. It could be anything –- question, appreciation, information, or even humor.
@@ -66,21 +65,18 @@ languages:
         - name: Tags
           url: /tags
           weight: 2
-        - name: Archive
-          url: /archives
-          weight: 3
         - name: Guestbook
           url: /guestbook
           weight: 4
         - name: Dashboard
-          url: https://umami-lime-nu.vercel.app/dashboard
+          url: https://cloud.umami.is/share/k86WWOJAyDHKMUJJ
           weight: 5
   zh:
     contentDir: content/zh
     languageName: 中
-    author: Ladder 主题
+    author: Ray
     params:
-      # authorDescription: 一个美观，快速并且专注于阅读的主题
+      authorDescription: "热衷产品的 AI 算法工程师 · 努力打造自己的 AI 原生应用 🚀"
       info: "哈喽～大家好，我是Ray，一个热衷产品的AI算法工程师。这里主要分享两件事：1.个人的AI算法学习心得+工程实践。2.努力打造自己的AI原生应用。坚持原创，争取周更🚀"
       guestbook:
         title: "留言板"
@@ -93,14 +89,11 @@ languages:
         - name: 分类
           url: /tags
           weight: 2
-        - name: 历史文章
-          url: /archives
-          weight: 3
         - name: 留言板
           url: /guestbook
           weight: 4
         - name: 网站统计
-          url: https://umami-lime-nu.vercel.app/dashboard
+          url: https://cloud.umami.is/share/k86WWOJAyDHKMUJJ
           weight: 5
 taxonomies:
   series: series

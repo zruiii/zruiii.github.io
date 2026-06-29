@@ -1,9 +1,9 @@
 ---
 title: Image Generation
 date: 2025-11-10T14:38:41+08:00
-tags: []
+tags: [Generative Models]
 series: []
-featured: true
+featured: false
 ---
 Flow-GRPO, Qwen Image, etc.
 

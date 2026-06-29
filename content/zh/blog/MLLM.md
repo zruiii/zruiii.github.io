@@ -1,9 +1,9 @@
 ---
 title: MLLM
 date: 2025-11-09T21:25:48+08:00
-tags: []
+tags: [LLM]
 series: []
-featured: true
+featured: false
 ---
 这篇博客系统性地介绍 SOTA 的开源 MLLM，包括 Qwen-VL 系列，InternVL, Pixtral 等。
 

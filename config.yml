@@ -43,7 +43,7 @@ params:
       url: https://cloud.umami.is/script.js
   guestbook:
     title: Guestbook
-    description: Leave a comment below. It could be anything –- question, appreciation, information, or even humor.
+    description: "Say hi — let's be friends."
   social:
     - name: GitHub
       pre: >-
@@ -80,7 +80,7 @@ languages:
       info: "哈喽～大家好，我是Ray，一个热衷产品的AI算法工程师。这里主要分享两件事：1.个人的AI算法学习心得+工程实践。2.努力打造自己的AI原生应用。坚持原创，争取周更🚀"
       guestbook:
         title: "留言板"
-        description: "您的评论，会让该网站更精彩！"
+        description: "留个言，交个朋友。"
     menu:
       main:
         - name: 文章
